@@ -206,12 +206,12 @@
       <label class="file-label" for="fileInput">
         📁 Chọn file Excel
       </label>
-      <input
+     <input
         id="fileInput"
         type="file"
-        accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        multiple
       >
-
       <div id="fileStatus" class="status">
         Chưa tải file dữ liệu.
       </div>
@@ -291,6 +291,8 @@
   const camera = $("camera");
 
   let headers = [];
+  let dataSources = [];
+  let activeSourceCount = 0;
   let products = [];
   let barcodeIndex = -1;
   let pendingRows = [];
