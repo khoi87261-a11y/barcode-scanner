@@ -1,782 +1,347 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101827">
-  <title>Barcode Scanner - Tra cứu sản phẩm</title>
-
-  <!-- Thư viện đọc CSV -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-  <!-- Thư viện đọc Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- Thư viện quét barcode bằng camera -->
- <script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
-
-  <style>
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: #101827;
-      color: #172033;
-      font-family: Arial, sans-serif;
-    }
-
-    header, main {
-      width: min(100% - 24px, 760px);
-      margin: 18px auto;
-    }
-
-    header, .card {
-      background: #fff;
-      border-radius: 20px;
-      padding: 22px;
-      box-shadow: 0 4px 18px #0002;
-    }
-
-    header h1 {
-      margin: 0 0 8px;
-      font-size: 26px;
-    }
-
-    header p, .muted {
-      color: #64748b;
-      line-height: 1.5;
-    }
-
-    .card { margin-bottom: 18px; }
-
-    h2 {
-      margin: 0 0 14px;
-      font-size: 21px;
-    }
-
-    button, .file-label {
-      border: 0;
-      border-radius: 12px;
-      padding: 14px 18px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 48px;
-    }
-
-    button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-
-    .primary, .file-label {
-      background: #2563eb;
-      color: white;
-    }
-
-    .green { background: #16a34a; color: white; }
-    .dark { background: #1e293b; color: white; }
-    .red { background: #dc2626; color: white; }
-
-    .file-label {
-      width: 100%;
-      margin-bottom: 10px;
-    }
-
-    input[type="file"] { display: none; }
-
-    input[type="text"], select {
-      width: 100%;
-      min-height: 50px;
-      padding: 13px;
-      border: 1px solid #cbd5e1;
-      border-radius: 12px;
-      font-size: 16px;
-      background: white;
-      color: #172033;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .row > * { flex: 1; min-width: 0; }
-
-    .status {
-      padding: 13px;
-      margin-top: 12px;
-      border-radius: 10px;
-      background: #eff6ff;
-      color: #1d4ed8;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    .status.error {
-      background: #fef2f2;
-      color: #b91c1c;
-    }
-
-    .status.success {
-      background: #f0fdf4;
-      color: #166534;
-    }
-
-    #camera {
-      width: 100%;
-      max-height: 420px;
-      margin-top: 14px;
-      background: #0b1120;
-      border-radius: 14px;
-      object-fit: cover;
-    }
-
-    [hidden] { display: none !important; }
-
-    #result {
-      overflow-wrap: anywhere;
-    }
-
-    .result-head {
-      margin-bottom: 16px;
-      overflow-wrap: anywhere;
-    }
-
-    .result-head h2 { margin-bottom: 8px; }
-
-    .field {
-      border: 1px solid #e2e8f0;
-      background: #f8fafc;
-      border-radius: 12px;
-      padding: 14px;
-      margin-top: 10px;
-      min-width: 0;
-    }
-
-    .field-name {
-      font-size: 13px;
-      color: #64748b;
-      font-weight: 700;
-      margin-bottom: 8px;
-      overflow-wrap: anywhere;
-    }
-
-    .field-value {
-      font-size: 17px;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    .small { font-size: 13px; }
-
-    footer {
-      text-align: center;
-      color: #cbd5e1;
-      padding: 12px 20px 30px;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    @media (max-width: 480px) {
-      header, .card { padding: 17px; }
-      header h1 { font-size: 23px; }
-      .row { gap: 8px; }
-      button { padding: 12px 10px; font-size: 15px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>Barcode Scanner — Tra cứu sản phẩm</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
+<style>
+:root{color-scheme:light;--ink:#172033;--muted:#64748b;--line:#e2e8f0;--blue:#2563eb;--green:#15803d;--bg:#f1f5f9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header,main,footer{width:min(100% - 24px,760px);margin:16px auto}
+header,.card{background:#fff;border-radius:18px;padding:20px;box-shadow:0 4px 18px #0f172a0d}
+header h1{font-size:clamp(22px,5vw,28px);margin:0 0 6px}
+p{line-height:1.5}header p,.muted{color:var(--muted);margin:0;line-height:1.5}
+.card{margin-bottom:14px}h2{font-size:19px;margin:0 0 14px}h3{font-size:16px;margin:0 0 8px}
+button,.file-label{border:0;border-radius:12px;padding:13px 16px;min-height:48px;font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;justify-content:center;align-items:center;text-align:center;gap:7px}
+button:disabled{opacity:.45;cursor:not-allowed}.primary,.file-label{background:var(--blue);color:#fff}.green{background:var(--green);color:#fff}.dark{background:#1e293b;color:#fff}.light{background:#eaf0f8;color:var(--ink)}.danger{background:#fee2e2;color:#991b1b}
+.file-label{width:100%;margin:12px 0 8px}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+input[type=text],select{width:100%;min-height:48px;padding:12px;border:1px solid #cbd5e1;border-radius:11px;background:white;color:var(--ink);font:inherit}
+.row{display:flex;gap:9px;margin-top:10px}.row>*{flex:1;min-width:0}
+.status{white-space:pre-line;padding:12px;margin-top:12px;border-radius:11px;background:#eff6ff;color:#1d4ed8;line-height:1.5;overflow-wrap:anywhere}
+.status.error{background:#fef2f2;color:#b91c1c}.status.success{background:#f0fdf4;color:#166534}.small{font-size:12px}
+.source-list{display:grid;gap:10px;margin-top:12px}.source{border:1px solid var(--line);border-radius:13px;padding:13px;min-width:0}
+.source-top{display:flex;align-items:flex-start;gap:9px}.source-top .source-info{flex:1;min-width:0}.filename{font-size:13px;color:var(--muted);overflow-wrap:anywhere;margin-top:3px}
+.source input[type=text]{margin-top:10px}.source-actions{display:flex;gap:8px;margin-top:9px}.source-actions button{flex:1;padding:10px;min-height:42px;font-size:13px}
+.pill{display:inline-flex;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700;background:#e2e8f0;color:#334155;margin-top:5px}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}
+#camera{display:block;width:100%;max-height:55vh;margin-top:12px;background:#0b1120;border-radius:14px;object-fit:cover}
+[hidden]{display:none!important}
+#result{overflow-wrap:anywhere}.result-head{margin-bottom:13px}.result-head h2{margin-bottom:5px}
+.results{display:grid;gap:12px}.product-card{border:1px solid var(--line);border-radius:15px;padding:15px;min-width:0;background:#fff}
+.product-card h3{overflow-wrap:anywhere}.source-label{font-size:13px;font-weight:800;color:#1d4ed8;background:#eff6ff;padding:7px 10px;border-radius:9px;display:inline-block;margin-bottom:10px;overflow-wrap:anywhere}
+.product-title{font-size:18px;font-weight:800;margin:0 0 8px}.barcode-line{font-size:13px;color:var(--muted);margin-bottom:12px;overflow-wrap:anywhere}
+.priority-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.priority-field{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:11px;padding:11px;min-width:0}
+.priority-field .field-name{font-size:12px;color:#166534;font-weight:700;margin-bottom:5px}.priority-field .field-value{font-size:17px;font-weight:800;overflow-wrap:anywhere;white-space:pre-wrap}
+.all-fields{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.all-fields summary{cursor:pointer;font-weight:750;padding:5px 0;min-height:35px}
+.field-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+.field{border:1px solid var(--line);background:#f8fafc;border-radius:10px;padding:10px;min-width:0}
+.field-name{font-size:12px;color:var(--muted);font-weight:750;margin-bottom:5px;overflow-wrap:anywhere}.field-value{font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.empty{padding:18px;border:1px dashed #cbd5e1;border-radius:12px;color:var(--muted);text-align:center}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px;line-height:1.6}
+@media(max-width:480px){header,.card{padding:16px}.row{gap:7px}button{padding:12px 9px;font-size:14px}.field-list{grid-template-columns:1fr}.priority-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:no-preference){.product-card,.source{animation:appear .16s ease-out}@keyframes appear{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}}
+</style>
 </head>
-
 <body>
-  <header>
-    <h1>📦 Barcode Scanner</h1>
-    <p>Tải dữ liệu sản phẩm · Quét mã vạch · Tra cứu mọi trường dữ liệu</p>
-  </header>
+<header>
+  <h1>📦 Tra cứu sản phẩm</h1>
+  <p>Tải Excel · Quét mã vạch · Xem đầy đủ thông tin từ từng nguồn</p>
+</header>
+<main>
+  <section class="card">
+    <h2>1. Tải file Excel</h2>
+    <p class="muted">Chọn tối đa 5 file Excel. Mỗi file có nhãn riêng để phân biệt nguồn dữ liệu.</p>
+    <label class="file-label" for="fileInput">📁 Chọn file Excel</label>
+    <input id="fileInput" type="file" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>
+    <div id="fileStatus" class="status" aria-live="polite">Chưa tải file dữ liệu.</div>
+    <div id="sourceList" class="source-list" hidden></div>
+    <div id="columnPicker" class="source" hidden>
+      <h3>Chọn cột mã vạch</h3>
+      <p id="columnPrompt" class="muted"></p>
+      <select id="barcodeColumn"></select>
+      <div class="row"><button id="confirmColumn" class="primary">Xác nhận cột</button></div>
+    </div>
+    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt, không tải lên máy chủ. Chỉ đọc sheet đầu tiên. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
+  </section>
 
-  <main>
-    <section class="card">
-      <h2>1. Tải file Excel</h2>
+  <section class="card">
+    <h2>2. Quét hoặc nhập mã vạch</h2>
+    <input id="barcodeInput" type="text" inputmode="text" autocomplete="off" placeholder="Nhập hoặc dán mã vạch" aria-label="Mã vạch cần tìm">
+    <div class="row">
+      <button id="searchButton" class="primary" disabled>🔎 Tìm kiếm</button>
+      <button id="startCamera" class="green" disabled>📷 Quét mã</button>
+    </div>
+    <div class="row">
+      <button id="stopCamera" class="dark" disabled>Dừng camera</button>
+      <button id="clearButton" class="light">Xóa kết quả</button>
+    </div>
+    <video id="camera" autoplay muted playsinline hidden></video>
+    <div id="scanStatus" class="status" aria-live="polite">Hãy tải file dữ liệu hợp lệ trước khi tra cứu.</div>
+  </section>
 
-      <label class="file-label" for="fileInput">
-        📁 Chọn file Excel
-      </label>
-     <input
-        id="fileInput"
-        type="file"
-        accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        multiple
-      >
-      <div id="fileStatus" class="status">
-        Chưa tải file dữ liệu.
-      </div>
-
-      <div id="columnPicker" hidden>
-        <p class="muted">
-          Không xác định được duy nhất cột barcode.
-          Hãy chọn đúng cột mã vạch:
-        </p>
-        <select id="barcodeColumn"></select>
-        <button id="confirmColumn" class="primary" style="width:100%;margin-top:10px">
-          Xác nhận cột barcode
-        </button>
-      </div>
-
-      <p class="muted small">
-        Dữ liệu được xử lý trong trình duyệt. Không tải lên máy chủ.
-        Nếu file Excel có nhiều sheet, ứng dụng sẽ đọc sheet đầu tiên.
-      </p>
-    </section>
-
-    <section class="card">
-      <h2>2. Quét hoặc nhập barcode</h2>
-
-      <input
-        id="barcodeInput"
-        type="text"
-        inputmode="numeric"
-        autocomplete="off"
-        placeholder="Nhập barcode tại đây"
-        aria-label="Barcode cần tìm"
-      >
-
-      <div class="row">
-        <button id="searchButton" class="primary">🔎 Tìm kiếm</button>
-        <button id="startCamera" class="green">📷 Bắt đầu quét</button>
-      </div>
-
-      <div class="row">
-        <button id="stopCamera" class="dark" disabled>Dừng camera</button>
-        <button id="clearButton" class="dark">Xóa kết quả</button>
-      </div>
-
-      <video id="camera" autoplay muted playsinline hidden></video>
-
-      <div id="scanStatus" class="status" aria-live="polite">
-        Hãy tải file dữ liệu trước khi tra cứu.
-      </div>
-    </section>
-
-    <section class="card" id="result" hidden>
-      <div class="result-head">
-        <h2>📋 Kết quả tra cứu</h2>
-        <div id="resultSummary" class="muted"></div>
-      </div>
-      <div id="resultFields"></div>
-    </section>
-  </main>
-
-  <footer>
-    Barcode Scanner · Dữ liệu hiển thị theo các cột thực tế trong file
-  </footer>
+  <section class="card" id="result" hidden>
+    <div class="result-head">
+      <h2>📋 Kết quả tra cứu</h2>
+      <div id="resultSummary" class="muted"></div>
+    </div>
+    <div id="resultFields" class="results"></div>
+  </section>
+</main>
+<footer>Barcode Scanner · Hiển thị mọi cột gốc · Mỗi file là một nguồn riêng</footer>
 
 <script>
 (() => {
-  "use strict";
+"use strict";
+const $ = id => document.getElementById(id);
+const fileInput = $("fileInput"), fileStatus = $("fileStatus"), barcodeInput = $("barcodeInput");
+const scanStatus = $("scanStatus"), result = $("result"), resultSummary = $("resultSummary");
+const resultFields = $("resultFields"), sourceList = $("sourceList"), camera = $("camera");
+let dataSources = [], pendingColumnSourceId = null, reader = null, controls = null, scanning = false, lastScanned = "";
 
-  const $ = id => document.getElementById(id);
-
-  const fileInput = $("fileInput");
-  const fileStatus = $("fileStatus");
-  const barcodeInput = $("barcodeInput");
-  const scanStatus = $("scanStatus");
-  const result = $("result");
-  const resultSummary = $("resultSummary");
-  const resultFields = $("resultFields");
-  const camera = $("camera");
-
-  let headers = [];
-  let dataSources = [];
-  let activeSourceCount = 0;
-  let products = [];
-  let barcodeIndex = -1;
-  let pendingRows = [];
-  let pendingHeaders = [];
-  let reader = null;
-  let controls = null;
-  let scanning = false;
-  let lastScanned = "";
-
-  function setStatus(element, message, type = "") {
-    element.textContent = message;
-    element.className = "status" + (type ? " " + type : "");
+function setStatus(el, message, type="") { el.textContent = message; el.className = "status" + (type ? " " + type : ""); }
+function normalizeHeader(value) {
+  return String(value ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").replace(/[^a-z0-9]/g,"");
+}
+function barcodeString(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+function displayValue(value) { return value === null || value === undefined ? "" : String(value); }
+function detectBarcodeColumn(columns) {
+  const names = columns.map(normalizeHeader);
+  const exact = ["barcode","ean","ean8","ean13","eanupc","eanupccode","ean13code","upca","upce","barcodevalue","mavach","mavachsanpham","masanphambarcode"];
+  const matches = [];
+  names.forEach((name,i) => { if (exact.includes(name)) matches.push(i); });
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) return -1;
+  const likely = names.map((name,i)=>({name,i})).filter(x=>/barcode|mavach|ean13|ean8|upca|upce/.test(x.name));
+  return likely.length === 1 ? likely[0].i : -1;
+}
+function classifyField(header) {
+  const n = normalizeHeader(header);
+  // Chỉ ưu tiên các tên tương đối rõ; không suy đoán "giá" chung là giá bán hiện tại.
+  if (/(giakhuyenmai|giakm|giabanmoi|giasaukhuyenmai|discountprice|saleprice|promotionalprice|currentprice|newprice)/.test(n)) return "price";
+  if (/(giagoc|giabanle|giathuong|originalprice|regularprice|listprice|oldprice|retailprice)/.test(n)) return "oldPrice";
+  if (/(phantramgiam|mucgiam|discountpercent|discountpercentage|giamgia)/.test(n)) return "discount";
+  if (/(makhuyenmai|tenkhuyenmai|chuongtrinhkhuyenmai|promotioncode|promotionname|promo code)/.test(n)) return "promotion";
+  if (/(tensanpham|tenhang|productname|itemname|producttitle)/.test(n)) return "name";
+  return "other";
+}
+function findBarcodeDuplicates(rows, index) {
+  const seen = new Map(), errors = [];
+  rows.forEach((row,i)=>{
+    const code = barcodeString(row[index]); if (!code) return;
+    if (seen.has(code)) errors.push(`Mã "${code}" bị trùng ở dòng ${seen.get(code)} và ${i+2}.`);
+    else seen.set(code,i+2);
+  });
+  return errors;
+}
+function validateRows(columns, rows, index) {
+  const errors = [];
+  if (!columns.length) errors.push("File không có tiêu đề cột.");
+  if (index < 0 || index >= columns.length) errors.push("Chưa xác định cột mã vạch.");
+  if (errors.length) return {errors,products:[]};
+  rows.forEach((row,i)=>{ if (!barcodeString(row[index])) errors.push(`Dòng ${i+2}: thiếu mã vạch.`); });
+  errors.push(...findBarcodeDuplicates(rows,index));
+  if (errors.length) return {errors,products:[]};
+  const products = rows.map((row,i)=>({barcode:barcodeString(row[index]),values:columns.map((_,j)=>row[j]===undefined?"":row[j]),line:i+2}));
+  return {errors,products};
+}
+function updateSearchAvailability() {
+  const ready = dataSources.some(s=>s.status==="ready" && s.products.length);
+  $("searchButton").disabled = !ready;
+  $("startCamera").disabled = !ready;
+}
+function renderSources() {
+  sourceList.replaceChildren();
+  sourceList.hidden = dataSources.length === 0;
+  dataSources.forEach(source=>{
+    const card=document.createElement("div"); card.className="source";
+    const top=document.createElement("div"); top.className="source-top";
+    const info=document.createElement("div"); info.className="source-info";
+    const title=document.createElement("strong"); title.textContent=source.label || source.file.name;
+    const filename=document.createElement("div"); filename.className="filename"; filename.textContent=source.file.name;
+    const pill=document.createElement("span"); pill.className="pill "+(source.status==="ready"?"good":source.status==="error"?"bad":"warn"); pill.textContent=source.status==="ready"?`Đã kiểm tra · ${source.products.length} dòng`:source.status==="error"?"Có lỗi":source.status==="pending"?"Cần chọn cột mã vạch":"Đang đọc";
+    info.append(title,filename,pill); top.append(info); card.append(top);
+    const label=document.createElement("label"); label.className="small muted"; label.textContent="Nhãn nguồn (bạn có thể sửa)";
+    const input=document.createElement("input"); input.type="text"; input.value=source.label; input.maxLength=80; input.setAttribute("aria-label","Nhãn nguồn "+source.file.name);
+    input.addEventListener("change",()=>{source.label=input.value.trim()||source.file.name; renderSources();});
+    card.append(label,input);
+    if(source.status==="error" && source.errors?.length){
+      const err=document.createElement("div"); err.className="status error"; err.textContent=source.errors.slice(0,8).join("\n")+(source.errors.length>8?`\n… còn ${source.errors.length-8} lỗi.`:""); card.append(err);
+    }
+    const actions=document.createElement("div"); actions.className="source-actions";
+    if(source.status==="ready"){
+      const details=document.createElement("span"); details.className="muted small"; details.textContent=`${source.headers.length} cột · Cột mã: ${source.headers[source.barcodeIndex]}`; actions.append(details);
+    }
+    const remove=document.createElement("button"); remove.className="light"; remove.textContent="Xóa file"; remove.addEventListener("click",()=>{dataSources=dataSources.filter(s=>s.id!==source.id); if(pendingColumnSourceId===source.id){pendingColumnSourceId=null;$("columnPicker").hidden=true;} renderSources(); updateSearchAvailability(); setFileStatus();});
+    actions.append(remove); card.append(actions); sourceList.append(card);
+  });
+  updateSearchAvailability();
+}
+function setFileStatus() {
+  const ready=dataSources.filter(s=>s.status==="ready").length;
+  const failed=dataSources.filter(s=>s.status==="error").length;
+  if(!dataSources.length){setStatus(fileStatus,"Chưa tải file dữ liệu.");return;}
+  setStatus(fileStatus,`${dataSources.length}/5 file đã thêm · ${ready} file hợp lệ${failed?` · ${failed} file có lỗi`:""}. Có thể sửa nhãn từng file bên dưới.`,failed?"error":ready?"success":"");
+}
+function showColumnPicker(source) {
+  pendingColumnSourceId=source.id;
+  const select=$("barcodeColumn"); select.replaceChildren();
+  source.headers.forEach((header,i)=>{const option=document.createElement("option");option.value=String(i);option.textContent=`${header||"(cột không tên)"} — cột ${i+1}`;select.append(option);});
+  $("columnPrompt").textContent=`File: ${source.file.name}. Chọn đúng cột chứa mã vạch.`;
+  $("columnPicker").hidden=false;
+}
+function finalizeSource(source,index) {
+  const validation=validateRows(source.headers,source.rows,index);
+  source.barcodeIndex=index;
+  if(validation.errors.length){source.status="error";source.products=[];source.errors=validation.errors;}
+  else {source.status="ready";source.products=validation.products;source.errors=[];}
+  if(pendingColumnSourceId===source.id){pendingColumnSourceId=null;$("columnPicker").hidden=true;}
+  renderSources();setFileStatus();
+  if(source.status==="error") setStatus(scanStatus,`File "${source.label}" chưa được dùng vì có lỗi dữ liệu. Xem thông báo trong thẻ file.`, "error");
+  else setStatus(scanStatus,"Dữ liệu đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.","success");
+}
+async function readExcel(file) {
+  if(!window.XLSX) throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
+  const buffer=await file.arrayBuffer();
+  const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
+  if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
+  const sheet=workbook.Sheets[workbook.SheetNames[0]];
+  const table=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:false,blankrows:false});
+  if(!table.length) throw new Error("Sheet Excel đầu tiên trống.");
+  const headers=table[0].map(v=>String(v??"").trim());
+  const rows=table.slice(1).filter(row=>row.some(value=>String(value??"").trim()!==""));
+  return {headers,rows};
+}
+async function fingerprint(file) {
+  const buffer=await file.arrayBuffer();
+  if(window.crypto?.subtle){
+    const hash=await crypto.subtle.digest("SHA-256",buffer);
+    return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
   }
-
-  function normalizeHeader(value) {
-    return String(value ?? "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/đ/g, "d")
-      .replace(/[^a-z0-9]/g, "");
+  // Fallback fingerprint is less strong, so only a preliminary duplicate warning.
+  const bytes=new Uint8Array(buffer);let hash=2166136261;
+  for(let i=0;i<bytes.length;i++) hash=Math.imul(hash^bytes[i],16777619);
+  return `${file.size}-${(hash>>>0).toString(16)}`;
+}
+async function addFiles(files) {
+  const chosen=[...files];
+  if(!chosen.length)return;
+  if(dataSources.length+chosen.length>5){setStatus(fileStatus,`Bạn đang có ${dataSources.length} file. Chỉ được thêm tối đa 5 file; hãy chọn ${Math.max(0,5-dataSources.length)} file nữa hoặc xóa bớt file hiện có.`,"error");fileInput.value="";return;}
+  for(const file of chosen){
+    const ext=file.name.split(".").pop().toLowerCase();
+    if(!["xlsx","xls"].includes(ext)){setStatus(fileStatus,`"${file.name}" không phải file Excel .xlsx hoặc .xls.`,"error");continue;}
+    setStatus(fileStatus,`Đang kiểm tra file ${file.name}…`);
+    let hash;
+    try{hash=await fingerprint(file);}catch(e){setStatus(fileStatus,`Không thể kiểm tra file ${file.name}: ${e.message}`,"error");continue;}
+    const duplicate=dataSources.find(s=>s.fingerprint===hash);
+    if(duplicate){
+      const keep=window.confirm(`File "${file.name}" có nội dung giống file "${duplicate.file.name}".\n\nOK: vẫn giữ file này như một nguồn riêng.\nCancel: bỏ qua file trùng.`);
+      if(!keep)continue;
+    }
+    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],products:[],barcodeIndex:-1,errors:[]};
+    dataSources.push(source);renderSources();
+    try{
+      const parsed=await readExcel(file);source.headers=parsed.headers;source.rows=parsed.rows;
+      if(!source.headers.length) throw new Error("File không có tiêu đề cột.");
+      const index=detectBarcodeColumn(source.headers);
+      if(index===-1){source.status="pending";renderSources();showColumnPicker(source);setStatus(fileStatus,`Cần chọn cột mã vạch cho "${source.file.name}".`,"error");}
+      else finalizeSource(source,index);
+    }catch(error){source.status="error";source.errors=[error.message||"Không đọc được file Excel."];source.products=[];renderSources();setFileStatus();}
   }
-
-  function detectBarcodeColumn(columns) {
-    const names = columns.map(normalizeHeader);
-
-    const exact = [
-      "barcode", "ean", "ean8", "ean13",
-      "eanupc", "eanupccode", "ean13code",
-      "upca", "upce", "barcodevalue",
-      "mavach", "mavachsanpham", "masanphambarcode"
-    ];
-
-    const matches = [];
-
-    names.forEach((name, i) => {
-      if (exact.includes(name)) matches.push(i);
+  fileInput.value="";
+  renderSources();setFileStatus();
+}
+fileInput.addEventListener("change",()=>addFiles(fileInput.files));
+$("confirmColumn").addEventListener("click",()=>{
+  const source=dataSources.find(s=>s.id===pendingColumnSourceId);
+  if(!source)return;
+  finalizeSource(source,Number($("barcodeColumn").value));
+});
+function createField(header,value,priority=false) {
+  const field=document.createElement("div");field.className=priority?"priority-field":"field";
+  const name=document.createElement("div");name.className="field-name";name.textContent=header;
+  const val=document.createElement("div");val.className="field-value";val.textContent=displayValue(value);
+  field.append(name,val);return field;
+}
+function renderProductCard(source,product,query) {
+  const card=document.createElement("article");card.className="product-card";
+  const label=document.createElement("div");label.className="source-label";label.textContent=source.label||source.file.name;card.append(label);
+  const nameIndex=source.headers.findIndex(h=>classifyField(h)==="name");
+  const title=document.createElement("h3");title.className="product-title";title.textContent=nameIndex>=0&&displayValue(product.values[nameIndex]).trim()?displayValue(product.values[nameIndex]):"Thông tin sản phẩm";card.append(title);
+  const code=document.createElement("div");code.className="barcode-line";code.textContent=`Mã vạch: ${query} · Dòng Excel: ${product.line}`;card.append(code);
+  const priorities=["price","oldPrice","discount","promotion","name"];
+  const chosen=[];
+  priorities.forEach(type=>source.headers.forEach((header,i)=>{
+    if(classifyField(header)===type && displayValue(product.values[i]).trim() && !chosen.some(x=>x.i===i)) chosen.push({i,header,type});
+  }));
+  if(chosen.length){const grid=document.createElement("div");grid.className="priority-grid";chosen.forEach(item=>grid.append(createField(item.header,product.values[item.i],true)));card.append(grid);}
+  const details=document.createElement("details");details.className="all-fields";details.open=true;
+  const summary=document.createElement("summary");summary.textContent=`Toàn bộ dữ liệu (${source.headers.length} cột)`;details.append(summary);
+  const fields=document.createElement("div");fields.className="field-list";
+  source.headers.forEach((header,i)=>fields.append(createField(header||`Cột ${i+1}`,product.values[i])));
+  details.append(fields);card.append(details);return card;
+}
+function searchBarcode(value) {
+  const query=barcodeString(value);
+  const readySources=dataSources.filter(s=>s.status==="ready");
+  if(!readySources.length){setStatus(scanStatus,"Hãy tải ít nhất một file Excel hợp lệ trước.","error");return;}
+  if(!query){setStatus(scanStatus,"Vui lòng nhập hoặc quét mã vạch.","error");return;}
+  resultFields.replaceChildren();
+  const matches=[];
+  readySources.forEach(source=>source.products.forEach(product=>{if(product.barcode===query)matches.push({source,product});}));
+  if(!matches.length){result.hidden=true;setStatus(scanStatus,`Không tìm thấy mã vạch "${query}" trong ${readySources.length} file hợp lệ.`,"error");return;}
+  matches.forEach(({source,product})=>resultFields.append(renderProductCard(source,product,query)));
+  resultSummary.textContent=`Mã vạch ${query} · Tìm thấy ${matches.length} bản ghi trong ${new Set(matches.map(x=>x.source.id)).size} nguồn.`;
+  result.hidden=false;setStatus(scanStatus,"Đã tìm thấy dữ liệu. Mỗi thẻ tương ứng với một file nguồn.","success");
+  result.scrollIntoView({behavior:"smooth",block:"start"});
+}
+$("searchButton").addEventListener("click",()=>searchBarcode(barcodeInput.value));
+barcodeInput.addEventListener("keydown",event=>{if(event.key==="Enter")searchBarcode(barcodeInput.value);});
+$("clearButton").addEventListener("click",()=>{
+  barcodeInput.value="";result.hidden=true;resultFields.replaceChildren();
+  setStatus(scanStatus,dataSources.some(s=>s.status==="ready")?"Đã xóa kết quả. Bạn có thể tra cứu mã khác.":"Hãy tải file Excel hợp lệ trước.");
+  barcodeInput.focus();
+});
+async function stopCamera(){
+  scanning=false;
+  try{if(controls&&typeof controls.stop==="function")controls.stop();}catch(error){console.warn("Dừng camera:",error);}
+  controls=null;
+  if(camera.srcObject){camera.srcObject.getTracks().forEach(track=>track.stop());camera.srcObject=null;}
+  camera.pause();camera.hidden=true;$("startCamera").disabled=!dataSources.some(s=>s.status==="ready");$("stopCamera").disabled=true;
+}
+$("stopCamera").addEventListener("click",stopCamera);
+$("startCamera").addEventListener("click",async()=>{
+  if(!dataSources.some(s=>s.status==="ready")){setStatus(scanStatus,"Hãy tải file Excel hợp lệ trước khi quét.","error");return;}
+  if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){setStatus(scanStatus,"Camera cần HTTPS và trình duyệt hỗ trợ. Hãy mở trang qua HTTPS; bạn vẫn có thể nhập mã thủ công.","error");return;}
+  if(!window.ZXingBrowser){setStatus(scanStatus,"Không tải được thư viện camera. Kiểm tra Internet hoặc nhập mã thủ công.","error");return;}
+  await stopCamera();scanning=true;lastScanned="";
+  $("startCamera").disabled=true;$("stopCamera").disabled=false;camera.hidden=false;
+  setStatus(scanStatus,"Đang yêu cầu quyền camera…");
+  try{
+    reader=new ZXingBrowser.BrowserMultiFormatReader();
+    controls=await reader.decodeFromVideoDevice(undefined,camera,(scanResult,error)=>{
+      if(!scanning||!scanResult)return;
+      const code=scanResult.getText();
+      if(!code||code===lastScanned)return;
+      lastScanned=code;barcodeInput.value=code;searchBarcode(code);stopCamera();
     });
-
-    if (matches.length === 1) return matches[0];
-    if (matches.length > 1) return -1;
-
-    const likely = names
-      .map((name, i) => ({ name, i }))
-      .filter(item =>
-        /barcode|mavach|ean13|ean8|upca|upce/.test(item.name)
-      );
-
-    return likely.length === 1 ? likely[0].i : -1;
+    if(scanning)setStatus(scanStatus,"Camera đang hoạt động. Đưa mã vạch vào khung hình.","success");
+  }catch(error){
+    await stopCamera();let message="Không thể mở camera: "+(error.message||error);
+    if(error.name==="NotAllowedError")message="Bạn chưa cấp quyền camera. Hãy cho phép camera trong trình duyệt.";
+    else if(error.name==="NotFoundError")message="Không tìm thấy camera trên thiết bị.";
+    else if(error.name==="NotReadableError")message="Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó.";
+    setStatus(scanStatus,message,"error");
   }
-
-  function barcodeString(value) {
-    if (value === null || value === undefined) return "";
-    return String(value).trim();
-  }
-
-  function displayValue(value) {
-    if (value === null || value === undefined) return "";
-    return String(value);
-  }
-
-  function showColumnPicker(columns) {
-    const select = $("barcodeColumn");
-    select.replaceChildren();
-
-    columns.forEach((column, i) => {
-      const option = document.createElement("option");
-      option.value = String(i);
-      option.textContent = `${column || "(cột không tên)"} — cột ${i + 1}`;
-      select.appendChild(option);
-    });
-
-    $("columnPicker").hidden = false;
-  }
-
-  function validateData(columns, rows, selectedIndex) {
-    const errors = [];
-    const seen = new Map();
-    const validProducts = [];
-
-    if (!columns.length) {
-      return { errors: ["File không có tiêu đề cột."], products: [] };
-    }
-
-    if (selectedIndex < 0 || selectedIndex >= columns.length) {
-      return { errors: ["Cột barcode chưa được xác định."], products: [] };
-    }
-
-    rows.forEach((row, index) => {
-      const line = index + 2;
-      const barcode = barcodeString(row[selectedIndex]);
-
-      if (!barcode) {
-        errors.push(`Dòng ${line}: thiếu barcode.`);
-        return;
-      }
-
-      if (seen.has(barcode)) {
-        errors.push(
-          `Barcode "${barcode}" bị trùng ở dòng ${seen.get(barcode)} và ${line}.`
-        );
-        return;
-      }
-
-      seen.set(barcode, line);
-
-      const record = row.map(value => value === undefined ? "" : value);
-      validProducts.push({
-        barcode,
-        values: record,
-        line
-      });
-    });
-
-    return { errors, products: validProducts };
-  }
-
-  function commitData(columns, rows, selectedIndex) {
-    const validation = validateData(columns, rows, selectedIndex);
-
-    if (validation.errors.length) {
-      products = [];
-      headers = [];
-      barcodeIndex = -1;
-      result.hidden = true;
-      $("columnPicker").hidden = false;
-
-      setStatus(
-        fileStatus,
-        "Không thể sử dụng dữ liệu vì có lỗi:\n" +
-        validation.errors.slice(0, 12).join("\n") +
-        (validation.errors.length > 12
-          ? `\n... còn ${validation.errors.length - 12} lỗi khác.`
-          : ""),
-        "error"
-      );
-
-      if (validation.errors.length > 12) {
-        console.warn("Tất cả lỗi dữ liệu:", validation.errors);
-      }
-
-      return false;
-    }
-
-    headers = columns.map((h, i) =>
-      String(h ?? "").trim() || `Cột ${i + 1}`
-    );
-
-    products = validation.products;
-    barcodeIndex = selectedIndex;
-    $("columnPicker").hidden = true;
-
-    setStatus(
-      fileStatus,
-      `Đọc thành công ${products.length} sản phẩm, ${headers.length} cột. Cột barcode: "${headers[barcodeIndex]}".`,
-      "success"
-    );
-
-    setStatus(
-      scanStatus,
-      "Dữ liệu đã sẵn sàng. Bạn có thể nhập barcode hoặc bật camera.",
-      "success"
-    );
-
-    return true;
-  }
-
-  function processTable(columns, rows) {
-    if (!columns.length) {
-      setStatus(fileStatus, "File không có tiêu đề cột.", "error");
-      return;
-    }
-
-    const selectedIndex = detectBarcodeColumn(columns);
-    pendingHeaders = columns;
-    pendingRows = rows;
-
-    if (selectedIndex === -1) {
-      showColumnPicker(columns);
-      setStatus(
-        fileStatus,
-        "Hãy chọn cột barcode chính xác trước khi tra cứu.",
-        "error"
-      );
-      return;
-    }
-
-    commitData(columns, rows, selectedIndex);
-  }
-
-  function parseCSV(file) {
-    if (!window.Papa) {
-      setStatus(fileStatus, "Không tải được thư viện CSV. Hãy tải lại trang.", "error");
-      return;
-    }
-
-    window.Papa.parse(file, {
-      header: false,
-      skipEmptyLines: "greedy",
-      dynamicTyping: false,
-      complete: result => {
-        const data = result.data || [];
-
-        if (!data.length) {
-          setStatus(fileStatus, "File CSV trống.", "error");
-          return;
-        }
-
-        const columns = data[0].map(v => String(v ?? "").trim());
-        const rows = data.slice(1).filter(row =>
-          row.some(value => String(value ?? "").trim() !== "")
-        );
-
-        processTable(columns, rows);
-      },
-      error: error => {
-        setStatus(fileStatus, "Không đọc được CSV: " + error.message, "error");
-      }
-    });
-  }
-
-  function parseExcel(file) {
-    if (!window.XLSX) {
-      setStatus(fileStatus, "Không tải được thư viện Excel. Hãy tải lại trang.", "error");
-      return;
-    }
-
-    const fileReader = new FileReader();
-
-    fileReader.onload = event => {
-      try {
-        const workbook = XLSX.read(event.target.result, {
-          type: "array",
-          cellDates: false
-        });
-
-        if (!workbook.SheetNames.length) {
-          throw new Error("File Excel không có sheet.");
-        }
-
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-        // Đọc từng ô thành chuỗi để không biến barcode thành số khoa học.
-        const table = XLSX.utils.sheet_to_json(sheet, {
-          header: 1,
-          defval: "",
-          raw: false,
-          blankrows: false
-        });
-
-        if (!table.length) {
-          throw new Error("Sheet Excel đầu tiên trống.");
-        }
-
-        const columns = table[0].map(v => String(v ?? "").trim());
-        const rows = table.slice(1).filter(row =>
-          row.some(value => String(value ?? "").trim() !== "")
-        );
-
-        processTable(columns, rows);
-      } catch (error) {
-        setStatus(fileStatus, "Lỗi đọc Excel: " + error.message, "error");
-      }
-    };
-
-    fileReader.onerror = () => {
-      setStatus(fileStatus, "Không thể đọc file Excel.", "error");
-    };
-
-    fileReader.readAsArrayBuffer(file);
-  }
-
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files && fileInput.files[0];
-    if (!file) return;
-
-    products = [];
-    headers = [];
-    barcodeIndex = -1;
-    pendingRows = [];
-    pendingHeaders = [];
-    result.hidden = true;
-    $("columnPicker").hidden = true;
-
-    const extension = file.name.split(".").pop().toLowerCase();
-
-    setStatus(fileStatus, `Đang đọc file ${file.name}...`);
-
-    if (extension === "csv") {
-      parseCSV(file);
-    } else if (extension === "xlsx" || extension === "xls") {
-      parseExcel(file);
-    } else {
-      setStatus(fileStatus, "Định dạng không hỗ trợ. Hãy chọn CSV hoặc Excel.", "error");
-    }
-  });
-
-  $("confirmColumn").addEventListener("click", () => {
-    const selectedIndex = Number($("barcodeColumn").value);
-
-    commitData(pendingHeaders, pendingRows, selectedIndex);
-  });
-
-  function searchBarcode(value) {
-    const query = barcodeString(value);
-
-    if (!products.length) {
-      setStatus(scanStatus, "Hãy tải và kiểm tra file dữ liệu hợp lệ trước.", "error");
-      return;
-    }
-
-    if (!query) {
-      setStatus(scanStatus, "Vui lòng nhập hoặc quét barcode.", "error");
-      return;
-    }
-
-    // So sánh chuỗi chính xác, không bỏ số 0 hoặc ký tự trong barcode.
-    const matches = products.filter(item => item.barcode === query);
-
-    if (!matches.length) {
-      result.hidden = true;
-      setStatus(scanStatus, `Không tìm thấy sản phẩm có barcode "${query}".`, "error");
-      return;
-    }
-
-    const product = matches[0];
-    resultFields.replaceChildren();
-
-    headers.forEach((header, i) => {
-      const field = document.createElement("div");
-      field.className = "field";
-
-      const name = document.createElement("div");
-      name.className = "field-name";
-      name.textContent = header;
-
-      const valueElement = document.createElement("div");
-      valueElement.className = "field-value";
-      valueElement.textContent = displayValue(product.values[i]);
-
-      field.append(name, valueElement);
-      resultFields.appendChild(field);
-    });
-
-    resultSummary.textContent =
-      `Barcode: ${product.barcode} · Dòng dữ liệu: ${product.line} · ${headers.length} trường`;
-
-    result.hidden = false;
-    setStatus(scanStatus, "Đã tìm thấy sản phẩm.", "success");
-    result.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  $("searchButton").addEventListener("click", () => {
-    searchBarcode(barcodeInput.value);
-  });
-
-  barcodeInput.addEventListener("keydown", event => {
-    if (event.key === "Enter") searchBarcode(barcodeInput.value);
-  });
-
-  $("clearButton").addEventListener("click", () => {
-    barcodeInput.value = "";
-    result.hidden = true;
-    resultFields.replaceChildren();
-    setStatus(
-      scanStatus,
-      products.length
-        ? "Đã xóa kết quả. Bạn có thể tìm barcode khác."
-        : "Hãy tải file dữ liệu trước khi tra cứu."
-    );
-    barcodeInput.focus();
-  });
-
-  async function stopCamera() {
-    scanning = false;
-
-    try {
-      if (controls && typeof controls.stop === "function") {
-        controls.stop();
-      }
-    } catch (error) {
-      console.warn("Dừng camera:", error);
-    }
-
-    controls = null;
-
-    if (camera.srcObject) {
-      camera.srcObject.getTracks().forEach(track => track.stop());
-      camera.srcObject = null;
-    }
-
-    camera.pause();
-    camera.hidden = true;
-
-    $("startCamera").disabled = false;
-    $("stopCamera").disabled = true;
-  }
-
-  $("stopCamera").addEventListener("click", stopCamera);
-
-  $("startCamera").addEventListener("click", async () => {
-    if (!products.length) {
-      setStatus(scanStatus, "Hãy tải file dữ liệu hợp lệ trước khi quét.", "error");
-      return;
-    }
-
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      setStatus(
-        scanStatus,
-        "Camera cần HTTPS và trình duyệt hỗ trợ. Hãy mở link GitHub Pages HTTPS.",
-        "error"
-      );
-      return;
-    }
-
-    if (!window.ZXingBrowser) {
-      setStatus(
-        scanStatus,
-        "Không tải được thư viện camera. Kiểm tra kết nối Internet rồi tải lại trang.",
-        "error"
-      );
-      return;
-    }
-
-    await stopCamera();
-    scanning = true;
-    lastScanned = "";
-
-    $("startCamera").disabled = true;
-    $("stopCamera").disabled = false;
-    camera.hidden = false;
-
-    setStatus(scanStatus, "Đang yêu cầu quyền camera...");
-
-    try {
-      reader = new ZXingBrowser.BrowserMultiFormatReader();
-
-      controls = await reader.decodeFromVideoDevice(
-        undefined,
-        camera,
-        (scanResult, error) => {
-          if (!scanning || !scanResult) return;
-
-          const code = scanResult.getText();
-
-          if (!code || code === lastScanned) return;
-
-          lastScanned = code;
-          barcodeInput.value = code;
-          searchBarcode(code);
-
-          // Dừng sau mỗi lần đọc thành công để tránh quét lặp.
-          stopCamera();
-        }
-      );
-
-      if (scanning) {
-        setStatus(
-          scanStatus,
-          "Camera đang hoạt động. Đưa barcode vào khung hình.",
-          "success"
-        );
-      }
-    } catch (error) {
-      await stopCamera();
-
-      let message = "Không thể mở camera: " + (error.message || error);
-
-      if (error.name === "NotAllowedError") {
-        message = "Bạn chưa cấp quyền camera. Hãy cho phép camera trong trình duyệt.";
-      } else if (error.name === "NotFoundError") {
-        message = "Không tìm thấy camera trên thiết bị.";
-      } else if (error.name === "NotReadableError") {
-        message = "Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó.";
-      }
-
-      setStatus(scanStatus, message, "error");
-    }
-  });
-
-  window.addEventListener("pagehide", () => {
-    stopCamera();
-  });
+});
+window.addEventListener("pagehide",()=>stopCamera());
 })();
 </script>
 </body>
