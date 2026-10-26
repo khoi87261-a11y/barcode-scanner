@@ -45,6 +45,14 @@ input[type=text],select{width:100%;min-height:48px;padding:12px;border:1px solid
 footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px;line-height:1.6}
 @media(max-width:480px){header,.card{padding:16px}.row{gap:7px}button{padding:12px 9px;font-size:14px}.field-list{grid-template-columns:1fr}.priority-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:no-preference){.product-card,.source{animation:appear .16s ease-out}@keyframes appear{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}}
+
+.display-columns{margin:12px 0;padding:12px;border:1px solid var(--border,#d8dde5);border-radius:14px}
+.display-columns summary{font-weight:700;cursor:pointer}
+.display-columns p{font-size:.9rem;color:var(--muted,#687385);margin:8px 0}
+.display-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.display-option{display:flex;align-items:flex-start;gap:8px;font-size:.92rem;overflow-wrap:anywhere}
+.display-option input{margin-top:4px;flex-shrink:0}
+@media(max-width:420px){.display-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -133,23 +141,19 @@ function classifyField(header) {
   return "other";
 }
 function findBarcodeDuplicates(rows, index) {
-  const seen = new Map(), errors = [];
-  rows.forEach((row,i)=>{
-    const code = barcodeString(row[index]); if (!code) return;
-    if (seen.has(code)) errors.push(`Mã "${code}" bị trùng ở dòng ${seen.get(code)} và ${i+2}.`);
-    else seen.set(code,i+2);
-  });
-  return errors;
+  // Mã lặp được giữ thành nhiều bản ghi riêng; không tự gộp hoặc loại file.
+  // Việc phân biệt nguồn/CTKM dựa vào nhãn nguồn và dữ liệu từng dòng.
+  return [];
 }
-function validateRows(columns, rows, index) {
+function validateRows(columns, rows, index, headerRowIndex=0) {
   const errors = [];
   if (!columns.length) errors.push("File không có tiêu đề cột.");
   if (index < 0 || index >= columns.length) errors.push("Chưa xác định cột mã vạch.");
   if (errors.length) return {errors,products:[]};
-  rows.forEach((row,i)=>{ if (!barcodeString(row[index])) errors.push(`Dòng ${i+2}: thiếu mã vạch.`); });
+  rows.forEach((row,i)=>{ if (!barcodeString(row[index])) errors.push(`Dòng ${i+headerRowIndex+2}: thiếu mã vạch.`); });
   errors.push(...findBarcodeDuplicates(rows,index));
   if (errors.length) return {errors,products:[]};
-  const products = rows.map((row,i)=>({barcode:barcodeString(row[index]),values:columns.map((_,j)=>row[j]===undefined?"":row[j]),line:i+2}));
+  const products = rows.map((row,i)=>({barcode:barcodeString(row[index]),values:columns.map((_,j)=>row[j]===undefined?"":row[j]),line:i+headerRowIndex+2}));
   return {errors,products};
 }
 function updateSearchAvailability() {
@@ -175,6 +179,19 @@ function renderSources() {
     if(source.status==="error" && source.errors?.length){
       const err=document.createElement("div"); err.className="status error"; err.textContent=source.errors.slice(0,8).join("\n")+(source.errors.length>8?`\n… còn ${source.errors.length-8} lỗi.`:""); card.append(err);
     }
+    const displayWrap=document.createElement("details");displayWrap.className="display-columns";
+    const displaySummary=document.createElement("summary");displaySummary.textContent="Chọn cột hiển thị khi quét";displayWrap.append(displaySummary);
+    const displayHelp=document.createElement("p");displayHelp.textContent="Bỏ chọn cột không cần xem. Dữ liệu gốc trong Excel không bị xóa.";displayWrap.append(displayHelp);
+    const displayGrid=document.createElement("div");displayGrid.className="display-grid";
+    if(!Array.isArray(source.displayColumns)) source.displayColumns=source.headers.map((_,i)=>i);
+    source.headers.forEach((header,i)=>{
+      const optionLabel=document.createElement("label");optionLabel.className="display-option";
+      const cb=document.createElement("input");cb.type="checkbox";cb.checked=source.displayColumns.includes(i);
+      cb.addEventListener("change",()=>{source.displayColumns=cb.checked?[...new Set([...source.displayColumns,i])]:source.displayColumns.filter(n=>n!==i);});
+      const span=document.createElement("span");span.textContent=header||`Tiêu đề trống (cột ${i+1})`;
+      optionLabel.append(cb,span);displayGrid.append(optionLabel);
+    });
+    displayWrap.append(displayGrid);card.append(displayWrap);
     const actions=document.createElement("div"); actions.className="source-actions";
     if(source.status==="ready"){
       const details=document.createElement("span"); details.className="muted small"; details.textContent=`${source.headers.length} cột · Cột mã: ${source.headers[source.barcodeIndex]}`; actions.append(details);
@@ -193,12 +210,12 @@ function setFileStatus() {
 function showColumnPicker(source) {
   pendingColumnSourceId=source.id;
   const select=$("barcodeColumn"); select.replaceChildren();
-  source.headers.forEach((header,i)=>{const option=document.createElement("option");option.value=String(i);option.textContent=`${header||"(cột không tên)"} — cột ${i+1}`;select.append(option);});
+  source.headers.forEach((header,i)=>{const option=document.createElement("option");option.value=String(i);option.textContent=`${header||`Tiêu đề trống (cột ${i+1})`} — cột ${i+1}`;select.append(option);});
   $("columnPrompt").textContent=`File: ${source.file.name}. Chọn đúng cột chứa mã vạch.`;
   $("columnPicker").hidden=false;
 }
 function finalizeSource(source,index) {
-  const validation=validateRows(source.headers,source.rows,index);
+  const validation=validateRows(source.headers,source.rows,index,source.headerRowIndex||0);
   source.barcodeIndex=index;
   if(validation.errors.length){source.status="error";source.products=[];source.errors=validation.errors;}
   else {source.status="ready";source.products=validation.products;source.errors=[];}
@@ -215,9 +232,24 @@ async function readExcel(file) {
   const sheet=workbook.Sheets[workbook.SheetNames[0]];
   const table=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:false,blankrows:false});
   if(!table.length) throw new Error("Sheet Excel đầu tiên trống.");
-  const headers=table[0].map(v=>String(v??"").trim());
-  const rows=table.slice(1).filter(row=>row.some(value=>String(value??"").trim()!==""));
-  return {headers,rows};
+  // Ưu tiên hàng có tên cột giống mã hàng/barcode; nếu không có thì chọn hàng
+  // trong 15 hàng đầu có nhiều ô được điền nhất để tránh hàng tiêu đề gộp/trống phía trên.
+  const headerWords = /barcode|bar.?code|mã vạch|mã hàng|mã sp|mã sản phẩm|sku|item code|product code|ean|upc/i;
+  const scanLimit = Math.min(table.length, 15);
+  let headerRowIndex = 0, bestScore = -1;
+  for (let r=0; r<scanLimit; r++) {
+    const cells = table[r].map(v=>String(v??"").trim());
+    const filled = cells.filter(Boolean).length;
+    const hasCodeHeader = cells.some(v=>headerWords.test(v));
+    const score = filled + (hasCodeHeader ? 1000 : 0);
+    if (score > bestScore) { bestScore=score; headerRowIndex=r; }
+  }
+  const rawHeaders=table[headerRowIndex].map(v=>String(v??"").trim());
+  const width=Math.max(rawHeaders.length,...table.slice(headerRowIndex+1).map(r=>r.length));
+  const headers=Array.from({length:width},(_,i)=>rawHeaders[i] || `Tiêu đề trống (cột ${i+1})`);
+  const rows=table.slice(headerRowIndex+1).map(row=>Array.from({length:width},(_,i)=>row[i]??""))
+    .filter(row=>row.some(value=>String(value??"").trim()!==""));
+  return {headers,rows,headerRowIndex};
 }
 async function fingerprint(file) {
   const buffer=await file.arrayBuffer();
@@ -248,7 +280,7 @@ async function addFiles(files) {
     const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],products:[],barcodeIndex:-1,errors:[]};
     dataSources.push(source);renderSources();
     try{
-      const parsed=await readExcel(file);source.headers=parsed.headers;source.rows=parsed.rows;
+      const parsed=await readExcel(file);source.headers=parsed.headers;source.rows=parsed.rows;source.headerRowIndex=parsed.headerRowIndex||0;
       if(!source.headers.length) throw new Error("File không có tiêu đề cột.");
       const index=detectBarcodeColumn(source.headers);
       if(index===-1){source.status="pending";renderSources();showColumnPicker(source);setStatus(fileStatus,`Cần chọn cột mã vạch cho "${source.file.name}".`,"error");}
@@ -273,19 +305,21 @@ function createField(header,value,priority=false) {
 function renderProductCard(source,product,query) {
   const card=document.createElement("article");card.className="product-card";
   const label=document.createElement("div");label.className="source-label";label.textContent=source.label||source.file.name;card.append(label);
-  const nameIndex=source.headers.findIndex(h=>classifyField(h)==="name");
+  const visibleForTitle=Array.isArray(source.displayColumns)?source.displayColumns:source.headers.map((_,i)=>i);
+  const nameIndex=source.headers.findIndex((h,i)=>visibleForTitle.includes(i)&&classifyField(h)==="name");
   const title=document.createElement("h3");title.className="product-title";title.textContent=nameIndex>=0&&displayValue(product.values[nameIndex]).trim()?displayValue(product.values[nameIndex]):"Thông tin sản phẩm";card.append(title);
   const code=document.createElement("div");code.className="barcode-line";code.textContent=`Mã vạch: ${query} · Dòng Excel: ${product.line}`;card.append(code);
   const priorities=["price","oldPrice","discount","promotion","name"];
+  const visible=Array.isArray(source.displayColumns)?source.displayColumns:source.headers.map((_,i)=>i);
   const chosen=[];
   priorities.forEach(type=>source.headers.forEach((header,i)=>{
-    if(classifyField(header)===type && displayValue(product.values[i]).trim() && !chosen.some(x=>x.i===i)) chosen.push({i,header,type});
+    if(visible.includes(i) && classifyField(header)===type && displayValue(product.values[i]).trim() && !chosen.some(x=>x.i===i)) chosen.push({i,header,type});
   }));
   if(chosen.length){const grid=document.createElement("div");grid.className="priority-grid";chosen.forEach(item=>grid.append(createField(item.header,product.values[item.i],true)));card.append(grid);}
   const details=document.createElement("details");details.className="all-fields";details.open=true;
-  const summary=document.createElement("summary");summary.textContent=`Toàn bộ dữ liệu (${source.headers.length} cột)`;details.append(summary);
+  const summary=document.createElement("summary");summary.textContent=`Các cột đã chọn (${visible.length}/${source.headers.length})`;details.append(summary);
   const fields=document.createElement("div");fields.className="field-list";
-  source.headers.forEach((header,i)=>fields.append(createField(header||`Cột ${i+1}`,product.values[i])));
+  source.headers.forEach((header,i)=>{if(visible.includes(i))fields.append(createField(header||`Tiêu đề trống (cột ${i+1})`,product.values[i]));});
   details.append(fields);card.append(details);return card;
 }
 function searchBarcode(value) {
