@@ -25,7 +25,17 @@ input[type=text],select{width:100%;min-height:48px;padding:12px;border:1px solid
 .status.error{background:#fef2f2;color:#b91c1c}.status.success{background:#f0fdf4;color:#166534}.small{font-size:12px}
 .source-list{display:grid;gap:10px;margin-top:12px}.source{border:1px solid var(--line);border-radius:13px;padding:13px;min-width:0}
 .source-top{display:flex;align-items:flex-start;gap:9px}.source-top .source-info{flex:1;min-width:0}.filename{font-size:13px;color:var(--muted);overflow-wrap:anywhere;margin-top:3px}
-.source input[type=text]{margin-top:10px}.display-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.display-columns label{display:flex;gap:7px;align-items:flex-start;font-size:13px;line-height:1.35;padding:7px;border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere}.display-columns input{margin-top:2px;flex:0 0 auto}.source-actions{display:flex;gap:8px;margin-top:9px}.source-actions button{flex:1;padding:10px;min-height:42px;font-size:13px}
+.source input[type=text]{margin-top:10px}
+.display-columns{margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:14px}
+.display-columns summary{font-weight:750;cursor:pointer;padding:4px 0}
+.display-columns p{font-size:.9rem;color:var(--muted);margin:8px 0}
+.display-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.display-option{display:flex;align-items:flex-start;gap:8px;font-size:.92rem;overflow-wrap:anywhere;padding:7px;border:1px solid var(--line);border-radius:8px}
+.display-option input{margin-top:4px;flex-shrink:0}
+.display-actions{display:flex;gap:8px;margin-top:10px}
+.display-actions button{flex:1;min-height:38px;padding:8px;font-size:12px}
+.source-actions{display:flex;gap:8px;margin-top:9px}.source-actions button{flex:1;padding:10px;min-height:42px;font-size:13px}
+@media(max-width:420px){.display-grid{grid-template-columns:1fr}}
 .pill{display:inline-flex;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700;background:#e2e8f0;color:#334155;margin-top:5px}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}
 .camera-frame{position:relative;margin-top:12px;background:#0b1120;border-radius:14px;overflow:hidden}
 #camera{display:block;width:100%;max-height:55vh;min-height:220px;margin:0;background:#0b1120;border-radius:14px;object-fit:cover}
@@ -180,13 +190,37 @@ function renderSources() {
     input.addEventListener("change",()=>{source.label=input.value.trim()||source.file.name; renderSources();});
     card.append(label,input);
     if(source.status==="ready"){
-      const columnTitle=document.createElement("div");columnTitle.className="small muted";columnTitle.style.marginTop="10px";columnTitle.textContent="Chọn các cột muốn hiển thị trong kết quả (mặc định chọn tất cả)";card.append(columnTitle);
-      const columnBox=document.createElement("div");columnBox.className="display-columns";
+      if(!Array.isArray(source.visibleColumns))source.visibleColumns=source.headers.map((_,i)=>i);
+      const displayWrap=document.createElement("details");displayWrap.className="display-columns";
+      const displaySummary=document.createElement("summary");
+      const updateSummary=()=>{displaySummary.textContent=`Chọn cột hiển thị (${source.visibleColumns.length}/${source.headers.length} đang chọn)`;};
+      updateSummary();displayWrap.append(displaySummary);
+      const displayHelp=document.createElement("p");displayHelp.textContent="Tích các cột muốn xem sau khi quét mã. Mặc định chọn tất cả; dữ liệu trong Excel không bị thay đổi.";displayWrap.append(displayHelp);
+      const displayActions=document.createElement("div");displayActions.className="display-actions";
+      const selectAll=document.createElement("button");selectAll.type="button";selectAll.className="light";selectAll.textContent="Chọn tất cả";
+      const clearAll=document.createElement("button");clearAll.type="button";clearAll.className="light";clearAll.textContent="Bỏ chọn tất cả";
+      displayActions.append(selectAll,clearAll);displayWrap.append(displayActions);
+      const displayGrid=document.createElement("div");displayGrid.className="display-grid";
+      const checkboxes=[];
       source.headers.forEach((header,i)=>{
-        const itemLabel=document.createElement("label");const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.checked=source.visibleColumns?source.visibleColumns.includes(i):true;
-        checkbox.addEventListener("change",()=>{if(!source.visibleColumns)source.visibleColumns=source.headers.map((_,n)=>n);source.visibleColumns=checkbox.checked?[...new Set([...source.visibleColumns,i])]:source.visibleColumns.filter(n=>n!==i);renderSources();});
-        const text=document.createElement("span");text.textContent=displayHeader(header,i);itemLabel.append(checkbox,text);columnBox.append(itemLabel);
-      });card.append(columnBox);
+        const optionLabel=document.createElement("label");optionLabel.className="display-option";
+        const cb=document.createElement("input");cb.type="checkbox";cb.checked=source.visibleColumns.includes(i);
+        cb.addEventListener("change",()=>{
+          source.visibleColumns=cb.checked?[...new Set([...source.visibleColumns,i])]:source.visibleColumns.filter(n=>n!==i);
+          updateSummary();
+        });
+        const span=document.createElement("span");span.textContent=displayHeader(header,i);
+        optionLabel.append(cb,span);displayGrid.append(optionLabel);checkboxes.push(cb);
+      });
+      selectAll.addEventListener("click",()=>{
+        source.visibleColumns=source.headers.map((_,i)=>i);
+        checkboxes.forEach(cb=>cb.checked=true);updateSummary();
+      });
+      clearAll.addEventListener("click",()=>{
+        source.visibleColumns=[];
+        checkboxes.forEach(cb=>cb.checked=false);updateSummary();
+      });
+      displayWrap.append(displayGrid);card.append(displayWrap);
     }
     if(source.status==="error" && source.errors?.length){
       const err=document.createElement("div"); err.className="status error"; err.textContent=source.errors.slice(0,8).join("\n")+(source.errors.length>8?`\n… còn ${source.errors.length-8} lỗi.`:""); card.append(err);
