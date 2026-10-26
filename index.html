@@ -278,106 +278,32 @@ function finalizeSource(source,index) {
   if(source.status==="error") setStatus(scanStatus,`File "${source.label}" chưa được dùng vì có lỗi dữ liệu. Xem thông báo trong thẻ file.`, "error");
   else setStatus(scanStatus,"Dữ liệu đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.","success");
 }
-
 async function readExcel(file) {
-  if (!window.XLSX) {
-    throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
+  if(!window.XLSX) throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
+  const buffer=await file.arrayBuffer();
+  const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
+  if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
+  const sheet=workbook.Sheets[workbook.SheetNames[0]];
+  const table=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:false,blankrows:false});
+  if(!table.length) throw new Error("Sheet Excel đầu tiên trống.");
+  // Ưu tiên hàng có tên cột giống mã hàng/barcode; nếu không có thì chọn hàng
+  // trong 15 hàng đầu có nhiều ô được điền nhất để tránh hàng tiêu đề gộp/trống phía trên.
+  const headerWords = /barcode|bar.?code|mã vạch|mã hàng|mã sp|mã sản phẩm|sku|item code|product code|ean|upc/i;
+  const scanLimit = Math.min(table.length, 15);
+  let headerRowIndex = 0, bestScore = -1;
+  for (let r=0; r<scanLimit; r++) {
+    const cells = table[r].map(v=>String(v??"").trim());
+    const filled = cells.filter(Boolean).length;
+    const hasCodeHeader = cells.some(v=>headerWords.test(v));
+    const score = filled + (hasCodeHeader ? 1000 : 0);
+    if (score > bestScore) { bestScore=score; headerRowIndex=r; }
   }
-
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, {
-    type: "array",
-    cellDates: false
-  });
-
-  if (!workbook.SheetNames.length) {
-    throw new Error("File Excel không có sheet.");
-  }
-
-  const headerWords =
-    /barcode|bar.?code|mã vạch|mã hàng|mã sp|mã sản phẩm|sku|item code|product code|ean|upc/i;
-
-  let best = null;
-
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-    if (!sheet) continue;
-
-    const table = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      defval: "",
-      raw: true,
-      blankrows: false
-    });
-
-    if (!table.length) continue;
-
-    const scanLimit = Math.min(table.length, 15);
-    let headerRowIndex = 0;
-    let bestScore = -1;
-
-    for (let r = 0; r < scanLimit; r++) {
-      const cells = table[r].map(v => String(v ?? "").trim());
-      const filled = cells.filter(Boolean).length;
-      const hasCodeHeader = cells.some(v => headerWords.test(v));
-      const score = filled + (hasCodeHeader ? 1000 : 0);
-
-      if (score > bestScore) {
-        bestScore = score;
-        headerRowIndex = r;
-      }
-    }
-
-    const rawHeaders = table[headerRowIndex].map(
-      v => String(v ?? "").trim()
-    );
-
-    const width = Math.max(
-      rawHeaders.length,
-      ...table.slice(headerRowIndex + 1).map(r => r.length)
-    );
-
-    const headers = Array.from(
-      { length: width },
-      (_, i) => rawHeaders[i] || `Tiêu đề trống (cột ${i + 1})`
-    );
-
-    const rows = table
-      .slice(headerRowIndex + 1)
-      .map(row =>
-        Array.from({ length: width }, (_, i) => row[i] ?? "")
-      )
-      .filter(row =>
-        row.some(value => String(value ?? "").trim() !== "")
-      );
-
-    const barcodeIndex = detectBarcodeColumn(headers);
-    const hasBarcodeHeader = barcodeIndex >= 0;
-    const score =
-      (hasBarcodeHeader ? 100000 : 0) +
-      rows.length;
-
-    if (!best || score > best.score) {
-      best = {
-        headers,
-        rows,
-        headerRowIndex,
-        sheetName,
-        score
-      };
-    }
-  }
-
-  if (!best) {
-    throw new Error("Không tìm thấy sheet có dữ liệu.");
-  }
-
-  return {
-    headers: best.headers,
-    rows: best.rows,
-    headerRowIndex: best.headerRowIndex,
-    sheetName: best.sheetName
-  };
+  const rawHeaders=table[headerRowIndex].map(v=>String(v??"").trim());
+  const width=Math.max(rawHeaders.length,...table.slice(headerRowIndex+1).map(r=>r.length));
+  const headers=Array.from({length:width},(_,i)=>rawHeaders[i] || `Tiêu đề trống (cột ${i+1})`);
+  const rows=table.slice(headerRowIndex+1).map(row=>Array.from({length:width},(_,i)=>row[i]??""))
+    .filter(row=>row.some(value=>String(value??"").trim()!==""));
+  return {headers,rows,headerRowIndex};
 }
 async function fingerprint(file) {
   const buffer=await file.arrayBuffer();
@@ -452,123 +378,55 @@ function renderProductCard(source,product,query) {
 }
 function searchBarcode(value) {
   const query = barcodeString(value);
+  const readySources = dataSources.filter(source =>
+    source.status === "ready" && Array.isArray(source.products)
+  );
 
+  if (!readySources.length) {
+    setStatus(scanStatus, "Hãy tải ít nhất một file Excel hợp lệ trước.", "error");
+    return;
+  }
   if (!query) {
     setStatus(scanStatus, "Vui lòng nhập hoặc quét mã vạch.", "error");
     return;
   }
 
-  if (!dataSources.length) {
-    setStatus(scanStatus, "Hãy tải file Excel trước.", "error");
+  resultFields.replaceChildren();
+  const matches = [];
+
+  // Duyệt mọi dòng của mọi file; không dừng khi tìm thấy kết quả đầu tiên.
+  readySources.forEach(source => {
+    source.products.forEach(product => {
+      if (barcodeString(product.barcode) === query) {
+        matches.push({ source, product });
+      }
+    });
+  });
+
+  if (!matches.length) {
+    result.hidden = true;
+    const notReady = dataSources.filter(source => source.status !== "ready");
+    let message = `Không tìm thấy mã vạch "${query}" trong ${readySources.length} file hợp lệ.`;
+    if (notReady.length) {
+      message += "\nChưa tìm trong: " + notReady.map(source =>
+        `${source.file.name} (${source.status})`
+      ).join("; ");
+    }
+    setStatus(scanStatus, message, "error");
     return;
   }
 
-  resultFields.replaceChildren();
-
-  let totalMatches = 0;
-  let sourcesWithMatches = 0;
-  let sourcesSearched = 0;
-
-  dataSources.forEach(source => {
-    // File chưa sẵn sàng: thông báo rõ, không bỏ qua âm thầm.
-    if (source.status !== "ready") {
-      const card = document.createElement("article");
-      card.className = "product-card";
-
-      const label = document.createElement("div");
-      label.className = "source-label";
-      label.textContent =
-        "⚠️ " + (source.label || source.file.name) +
-        " · " + source.file.name;
-
-      const message = document.createElement("p");
-      message.textContent =
-        "Chưa tra cứu được file này. Trạng thái: " +
-        source.status +
-        ". Hãy kiểm tra file hoặc chọn cột mã vạch.";
-
-      card.append(label, message);
-      resultFields.append(card);
-      return;
-    }
-
-    sourcesSearched++;
-
-    // Tìm tất cả dòng khớp trong file hiện tại.
-    const normalizeBarcode = value =>
-  String(value ?? "")
-    .trim()
-    .replace(/\.0+$/, "")
-    .replace(/\s+/g, "");
-
-const matches = source.products.filter(product =>
-  normalizeBarcode(product.barcode) === normalizeBarcode(query)
-);
-    if (matches.length > 0) {
-      sourcesWithMatches++;
-
-      matches.forEach(product => {
-        totalMatches++;
-        resultFields.append(
-          renderProductCard(source, product, query)
-        );
-      });
-    } else {
-      // Không tìm thấy vẫn hiển thị thẻ cho file này.
-      const card = document.createElement("article");
-      card.className = "product-card";
-
-      const label = document.createElement("div");
-      label.className = "source-label";
-      label.textContent =
-        "📎 " + (source.label || source.file.name) +
-        " · " + source.file.name;
-
-      const heading = document.createElement("h3");
-      heading.className = "product-title";
-      heading.textContent = "Không tìm thấy bản ghi";
-
-      const detail = document.createElement("p");
-      const barcodeColumnName =
-  source.headers[source.barcodeIndex] || "(chưa xác định)";
-
-const sampleCodes = source.products
-  .slice(0, 5)
-  .map(product => String(product.barcode))
-  .join(", ");
-
-detail.textContent =
-  `Mã ${query} không khớp trong file này. ` +
-  `Cột đang dùng: ${barcodeColumnName}. ` +
-  `Một số mã đã đọc: ${sampleCodes || "(không có dữ liệu)"}`;
-      card.append(label, heading, detail);
-      resultFields.append(card);
-    }
+  matches.forEach(({ source, product }) => {
+    resultFields.append(renderProductCard(source, product, query));
   });
 
-  resultSummary.textContent =
-    `Mã vạch ${query} · ${totalMatches} bản ghi · ` +
-    `${sourcesWithMatches} nguồn có kết quả / ` +
-    `${sourcesSearched} nguồn đã tra cứu.`;
-
+  const sourceCount = new Set(matches.map(match => match.source.id)).size;
+  resultSummary.textContent = `Mã vạch ${query} · ${matches.length} bản ghi · ${sourceCount} nguồn có kết quả.`;
   result.hidden = false;
-
-  if (totalMatches > 0) {
-    setStatus(
-      scanStatus,
-      `Đã tìm thấy ${totalMatches} bản ghi trong ` +
-      `${sourcesWithMatches} nguồn. Các file còn lại cũng được liệt kê bên dưới.`,
-      "success"
-    );
-  } else {
-    setStatus(
-      scanStatus,
-      `Không tìm thấy mã ${query} trong các file đã tra cứu. ` +
-      "Hãy kiểm tra cột mã vạch đã chọn ở từng file.",
-      "error"
-    );
-  }
-
+  setStatus(scanStatus,
+    `Đã tìm thấy ${matches.length} bản ghi từ ${sourceCount} nguồn. Mỗi thẻ hiển thị các cột đã chọn của file tương ứng.`,
+    "success"
+  );
   result.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 $("searchButton").addEventListener("click",()=>searchBarcode(barcodeInput.value));
