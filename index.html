@@ -429,10 +429,15 @@ function searchBarcode(value) {
     sourcesSearched++;
 
     // Tìm tất cả dòng khớp trong file hiện tại.
-    const matches = source.products.filter(product =>
-      barcodeString(product.barcode) === query
-    );
+    const normalizeBarcode = value =>
+  String(value ?? "")
+    .trim()
+    .replace(/\.0+$/, "")
+    .replace(/\s+/g, "");
 
+const matches = source.products.filter(product =>
+  normalizeBarcode(product.barcode) === normalizeBarcode(query)
+);
     if (matches.length > 0) {
       sourcesWithMatches++;
 
@@ -458,9 +463,18 @@ function searchBarcode(value) {
       heading.textContent = "Không tìm thấy bản ghi";
 
       const detail = document.createElement("p");
-      detail.textContent =
-        `Mã vạch ${query} không có trong file này.`;
+      const barcodeColumnName =
+  source.headers[source.barcodeIndex] || "(chưa xác định)";
 
+const sampleCodes = source.products
+  .slice(0, 5)
+  .map(product => String(product.barcode))
+  .join(", ");
+
+detail.textContent =
+  `Mã ${query} không khớp trong file này. ` +
+  `Cột đang dùng: ${barcodeColumnName}. ` +
+  `Một số mã đã đọc: ${sampleCodes || "(không có dữ liệu)"}`;
       card.append(label, heading, detail);
       resultFields.append(card);
     }
