@@ -84,7 +84,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px
       <select id="barcodeColumn"></select>
       <div class="row"><button id="confirmColumn" class="primary">Xác nhận cột</button></div>
     </div>
-    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt, không tải lên máy chủ. Chỉ đọc sheet đầu tiên. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
+    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
   </section>
 
   <section class="card">
@@ -345,19 +345,102 @@ function renderProductCard(source,product,query) {
   details.append(fields);card.append(details);return card;
 }
 function searchBarcode(value) {
-  const query=barcodeString(value);
-  const readySources=dataSources.filter(s=>s.status==="ready");
-  if(!readySources.length){setStatus(scanStatus,"Hãy tải ít nhất một file Excel hợp lệ trước.","error");return;}
-  if(!query){setStatus(scanStatus,"Vui lòng nhập hoặc quét mã vạch.","error");return;}
+ function searchBarcode(value) {
+  const query = barcodeString(value);
+
+  // Chỉ tìm trong những file đã đọc thành công.
+  const readySources = dataSources.filter(
+    source => source.status === "ready"
+  );
+
+  if (!readySources.length) {
+    setStatus(
+      scanStatus,
+      "Hãy tải ít nhất một file Excel hợp lệ trước.",
+      "error"
+    );
+    return;
+  }
+
+  if (!query) {
+    setStatus(scanStatus, "Vui lòng nhập hoặc quét mã vạch.", "error");
+    return;
+  }
+
+  // Xóa kết quả cũ trước khi hiển thị kết quả tìm mới.
   resultFields.replaceChildren();
-  const matches=[];
-  readySources.forEach(source=>source.products.forEach(product=>{if(product.barcode===query)matches.push({source,product});}));
-  if(!matches.length){result.hidden=true;setStatus(scanStatus,`Không tìm thấy mã vạch "${query}" trong ${readySources.length} file hợp lệ.`,"error");return;}
-  matches.forEach(({source,product})=>resultFields.append(renderProductCard(source,product,query)));
-  resultSummary.textContent=`Mã vạch ${query} · Tìm thấy ${matches.length} bản ghi trong ${new Set(matches.map(x=>x.source.id)).size} nguồn.`;
-  result.hidden=false;setStatus(scanStatus,"Đã tìm thấy dữ liệu. Mỗi thẻ tương ứng với một file nguồn.","success");
-  result.scrollIntoView({behavior:"smooth",block:"start"});
-}
+
+  const matches = [];
+
+  // Duyệt TẤT CẢ file hợp lệ.
+  // Mỗi dòng khớp mã đều được giữ lại, không dừng ở kết quả đầu tiên.
+  readySources.forEach(source => {
+    source.products.forEach(product => {
+      if (barcodeString(product.barcode) === query) {
+        matches.push({
+          source,
+          product
+        });
+      }
+    });
+  });
+
+  if (matches.length === 0) {
+    result.hidden = true;
+
+    const ignoredSources = dataSources.filter(
+      source => source.status !== "ready"
+    );
+
+    let message =
+      `Không tìm thấy mã "${query}" trong ${readySources.length} file hợp lệ.`;
+
+    if (ignoredSources.length) {
+      message += "\nCác file chưa được tìm: " +
+        ignoredSources.map(source =>
+          `${source.file.name} (${source.status})`
+        ).join("; ");
+    }
+
+    setStatus(scanStatus, message, "error");
+    return;
+  }
+
+  // Hiển thị từng bản ghi khớp, kể cả khi nhiều file trùng mã.
+  // Mỗi thẻ dùng cấu hình cột hiển thị riêng của nguồn tương ứng.
+  matches.forEach(({ source, product }) => {
+    const card = renderProductCard(source, product, query);
+    resultFields.append(card);
+  });
+
+  const matchedSourceIds = new Set(
+    matches.map(match => match.source.id)
+  );
+
+  resultSummary.textContent =
+    `Mã vạch ${query} · ${matches.length} bản ghi · ` +
+    `${matchedSourceIds.size} nguồn có kết quả.`;
+
+  result.hidden = false;
+
+  let message =
+    `Đã tìm thấy ${matches.length} bản ghi từ ` +
+    `${matchedSourceIds.size} nguồn.`;
+
+  const ignoredSources = dataSources.filter(
+    source => source.status !== "ready"
+  );
+
+  if (ignoredSources.length) {
+    message += "\nLưu ý: chưa tìm trong " +
+      ignoredSources.map(source =>
+        `${source.file.name} (${source.status})`
+      ).join("; ");
+  }
+
+  setStatus(scanStatus, message, "success");
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
+}}
 $("searchButton").addEventListener("click",()=>searchBarcode(barcodeInput.value));
 barcodeInput.addEventListener("keydown",event=>{if(event.key==="Enter")searchBarcode(barcodeInput.value);});
 $("clearButton").addEventListener("click",()=>{
