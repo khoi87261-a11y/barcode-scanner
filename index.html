@@ -284,7 +284,15 @@ async function readExcel(file) {
   const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
   if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
   const sheet=workbook.Sheets[workbook.SheetNames[0]];
-  const table=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:false,blankrows:false});
+  const table = XLSX.utils.sheet_to_json(
+  sheet,
+  {
+    header: 1,
+    defval: "",
+    raw: true,
+    blankrows: false
+  }
+);
   if(!table.length) throw new Error("Sheet Excel đầu tiên trống.");
   // Ưu tiên hàng có tên cột giống mã hàng/barcode; nếu không có thì chọn hàng
   // trong 15 hàng đầu có nhiều ô được điền nhất để tránh hàng tiêu đề gộp/trống phía trên.
