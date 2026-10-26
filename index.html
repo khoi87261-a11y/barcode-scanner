@@ -378,55 +378,109 @@ function renderProductCard(source,product,query) {
 }
 function searchBarcode(value) {
   const query = barcodeString(value);
-  const readySources = dataSources.filter(source =>
-    source.status === "ready" && Array.isArray(source.products)
-  );
 
-  if (!readySources.length) {
-    setStatus(scanStatus, "Hãy tải ít nhất một file Excel hợp lệ trước.", "error");
-    return;
-  }
   if (!query) {
     setStatus(scanStatus, "Vui lòng nhập hoặc quét mã vạch.", "error");
     return;
   }
 
-  resultFields.replaceChildren();
-  const matches = [];
-
-  // Duyệt mọi dòng của mọi file; không dừng khi tìm thấy kết quả đầu tiên.
-  readySources.forEach(source => {
-    source.products.forEach(product => {
-      if (barcodeString(product.barcode) === query) {
-        matches.push({ source, product });
-      }
-    });
-  });
-
-  if (!matches.length) {
-    result.hidden = true;
-    const notReady = dataSources.filter(source => source.status !== "ready");
-    let message = `Không tìm thấy mã vạch "${query}" trong ${readySources.length} file hợp lệ.`;
-    if (notReady.length) {
-      message += "\nChưa tìm trong: " + notReady.map(source =>
-        `${source.file.name} (${source.status})`
-      ).join("; ");
-    }
-    setStatus(scanStatus, message, "error");
+  if (!dataSources.length) {
+    setStatus(scanStatus, "Hãy tải file Excel trước.", "error");
     return;
   }
 
-  matches.forEach(({ source, product }) => {
-    resultFields.append(renderProductCard(source, product, query));
+  resultFields.replaceChildren();
+
+  let totalMatches = 0;
+  let sourcesWithMatches = 0;
+  let sourcesSearched = 0;
+
+  dataSources.forEach(source => {
+    // File chưa sẵn sàng: thông báo rõ, không bỏ qua âm thầm.
+    if (source.status !== "ready") {
+      const card = document.createElement("article");
+      card.className = "product-card";
+
+      const label = document.createElement("div");
+      label.className = "source-label";
+      label.textContent =
+        "⚠️ " + (source.label || source.file.name) +
+        " · " + source.file.name;
+
+      const message = document.createElement("p");
+      message.textContent =
+        "Chưa tra cứu được file này. Trạng thái: " +
+        source.status +
+        ". Hãy kiểm tra file hoặc chọn cột mã vạch.";
+
+      card.append(label, message);
+      resultFields.append(card);
+      return;
+    }
+
+    sourcesSearched++;
+
+    // Tìm tất cả dòng khớp trong file hiện tại.
+    const matches = source.products.filter(product =>
+      barcodeString(product.barcode) === query
+    );
+
+    if (matches.length > 0) {
+      sourcesWithMatches++;
+
+      matches.forEach(product => {
+        totalMatches++;
+        resultFields.append(
+          renderProductCard(source, product, query)
+        );
+      });
+    } else {
+      // Không tìm thấy vẫn hiển thị thẻ cho file này.
+      const card = document.createElement("article");
+      card.className = "product-card";
+
+      const label = document.createElement("div");
+      label.className = "source-label";
+      label.textContent =
+        "📎 " + (source.label || source.file.name) +
+        " · " + source.file.name;
+
+      const heading = document.createElement("h3");
+      heading.className = "product-title";
+      heading.textContent = "Không tìm thấy bản ghi";
+
+      const detail = document.createElement("p");
+      detail.textContent =
+        `Mã vạch ${query} không có trong file này.`;
+
+      card.append(label, heading, detail);
+      resultFields.append(card);
+    }
   });
 
-  const sourceCount = new Set(matches.map(match => match.source.id)).size;
-  resultSummary.textContent = `Mã vạch ${query} · ${matches.length} bản ghi · ${sourceCount} nguồn có kết quả.`;
+  resultSummary.textContent =
+    `Mã vạch ${query} · ${totalMatches} bản ghi · ` +
+    `${sourcesWithMatches} nguồn có kết quả / ` +
+    `${sourcesSearched} nguồn đã tra cứu.`;
+
   result.hidden = false;
-  setStatus(scanStatus,
-    `Đã tìm thấy ${matches.length} bản ghi từ ${sourceCount} nguồn. Mỗi thẻ hiển thị các cột đã chọn của file tương ứng.`,
-    "success"
-  );
+
+  if (totalMatches > 0) {
+    setStatus(
+      scanStatus,
+      `Đã tìm thấy ${totalMatches} bản ghi trong ` +
+      `${sourcesWithMatches} nguồn. Các file còn lại cũng được liệt kê bên dưới.`,
+      "success"
+    );
+  } else {
+    setStatus(
+      scanStatus,
+      `Không tìm thấy mã ${query} trong các file đã tra cứu. ` +
+      "Hãy kiểm tra cột mã vạch đã chọn ở từng file.",
+      "error"
+    );
+  }
+
   result.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 $("searchButton").addEventListener("click",()=>searchBarcode(barcodeInput.value));
