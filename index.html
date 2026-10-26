@@ -84,7 +84,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px
       <select id="barcodeColumn"></select>
       <div class="row"><button id="confirmColumn" class="primary">Xác nhận cột</button></div>
     </div>
-    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
+    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt, không tải lên máy chủ. Chỉ đọc sheet đầu tiên. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
   </section>
 
   <section class="card">
@@ -121,7 +121,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px
     <div id="resultFields" class="results"></div>
   </section>
 </main>
-<footer>Barcode Scanner · By HPI 2434 .</footer>
+<footer>Barcode Scanner · Hiển thị mọi cột gốc · Mỗi file là một nguồn riêng</footer>
 
 <script>
 (() => {
@@ -139,7 +139,11 @@ function normalizeHeader(value) {
 }
 function barcodeString(value) {
   if (value === null || value === undefined) return "";
-  return String(value).trim();
+  let text = String(value).trim();
+  // Sửa trường hợp Excel đọc mã số thành dạng số nguyên có đuôi .0.
+  // Không bỏ số 0 ở đầu mã vạch.
+  if (/^\d+\.0+$/.test(text)) text = text.replace(/\.0+$/, "");
+  return text;
 }
 function displayValue(value) { return value === null || value === undefined ? "" : String(value); }
 function detectBarcodeColumn(columns) {
@@ -214,6 +218,34 @@ function renderSources() {
       optionLabel.append(cb,span);displayGrid.append(optionLabel);
     });
     displayWrap.append(displayGrid);card.append(displayWrap);
+
+    // Cho phép chọn/sửa cột mã vạch riêng cho từng file bất cứ lúc nào.
+    if (source.headers.length) {
+      const barcodeColumnWrap=document.createElement("div");
+      barcodeColumnWrap.style.marginTop="12px";
+      const barcodeColumnLabel=document.createElement("label");
+      barcodeColumnLabel.className="small muted";
+      barcodeColumnLabel.textContent="Vị trí cột mã vạch trong file";
+      barcodeColumnLabel.style.display="block";
+      barcodeColumnLabel.style.marginBottom="6px";
+      const barcodeColumnSelect=document.createElement("select");
+      barcodeColumnSelect.setAttribute("aria-label", "Vị trí cột mã vạch trong file " + source.file.name);
+      source.headers.forEach((header,i)=>{
+        const option=document.createElement("option");
+        option.value=String(i);
+        option.textContent=`Cột ${i+1} — ${header || `Tiêu đề trống (${i+1})`}`;
+        option.selected=(i===source.barcodeIndex);
+        barcodeColumnSelect.append(option);
+      });
+      barcodeColumnSelect.disabled=source.status==="reading";
+      barcodeColumnSelect.addEventListener("change",()=>{
+        const chosenIndex=Number(barcodeColumnSelect.value);
+        finalizeSource(source,chosenIndex);
+      });
+      barcodeColumnWrap.append(barcodeColumnLabel,barcodeColumnSelect);
+      card.append(barcodeColumnWrap);
+    }
+
     const actions=document.createElement("div"); actions.className="source-actions";
     if(source.status==="ready"){
       const details=document.createElement("span"); details.className="muted small"; details.textContent=`${source.headers.length} cột · Cột mã: ${source.headers[source.barcodeIndex]}`; actions.append(details);
@@ -345,102 +377,58 @@ function renderProductCard(source,product,query) {
   details.append(fields);card.append(details);return card;
 }
 function searchBarcode(value) {
- function searchBarcode(value) {
   const query = barcodeString(value);
-
-  // Chỉ tìm trong những file đã đọc thành công.
-  const readySources = dataSources.filter(
-    source => source.status === "ready"
+  const readySources = dataSources.filter(source =>
+    source.status === "ready" && Array.isArray(source.products)
   );
 
   if (!readySources.length) {
-    setStatus(
-      scanStatus,
-      "Hãy tải ít nhất một file Excel hợp lệ trước.",
-      "error"
-    );
+    setStatus(scanStatus, "Hãy tải ít nhất một file Excel hợp lệ trước.", "error");
     return;
   }
-
   if (!query) {
     setStatus(scanStatus, "Vui lòng nhập hoặc quét mã vạch.", "error");
     return;
   }
 
-  // Xóa kết quả cũ trước khi hiển thị kết quả tìm mới.
   resultFields.replaceChildren();
-
   const matches = [];
 
-  // Duyệt TẤT CẢ file hợp lệ.
-  // Mỗi dòng khớp mã đều được giữ lại, không dừng ở kết quả đầu tiên.
+  // Duyệt mọi dòng của mọi file; không dừng khi tìm thấy kết quả đầu tiên.
   readySources.forEach(source => {
     source.products.forEach(product => {
       if (barcodeString(product.barcode) === query) {
-        matches.push({
-          source,
-          product
-        });
+        matches.push({ source, product });
       }
     });
   });
 
-  if (matches.length === 0) {
+  if (!matches.length) {
     result.hidden = true;
-
-    const ignoredSources = dataSources.filter(
-      source => source.status !== "ready"
-    );
-
-    let message =
-      `Không tìm thấy mã "${query}" trong ${readySources.length} file hợp lệ.`;
-
-    if (ignoredSources.length) {
-      message += "\nCác file chưa được tìm: " +
-        ignoredSources.map(source =>
-          `${source.file.name} (${source.status})`
-        ).join("; ");
+    const notReady = dataSources.filter(source => source.status !== "ready");
+    let message = `Không tìm thấy mã vạch "${query}" trong ${readySources.length} file hợp lệ.`;
+    if (notReady.length) {
+      message += "\nChưa tìm trong: " + notReady.map(source =>
+        `${source.file.name} (${source.status})`
+      ).join("; ");
     }
-
     setStatus(scanStatus, message, "error");
     return;
   }
 
-  // Hiển thị từng bản ghi khớp, kể cả khi nhiều file trùng mã.
-  // Mỗi thẻ dùng cấu hình cột hiển thị riêng của nguồn tương ứng.
   matches.forEach(({ source, product }) => {
-    const card = renderProductCard(source, product, query);
-    resultFields.append(card);
+    resultFields.append(renderProductCard(source, product, query));
   });
 
-  const matchedSourceIds = new Set(
-    matches.map(match => match.source.id)
-  );
-
-  resultSummary.textContent =
-    `Mã vạch ${query} · ${matches.length} bản ghi · ` +
-    `${matchedSourceIds.size} nguồn có kết quả.`;
-
+  const sourceCount = new Set(matches.map(match => match.source.id)).size;
+  resultSummary.textContent = `Mã vạch ${query} · ${matches.length} bản ghi · ${sourceCount} nguồn có kết quả.`;
   result.hidden = false;
-
-  let message =
-    `Đã tìm thấy ${matches.length} bản ghi từ ` +
-    `${matchedSourceIds.size} nguồn.`;
-
-  const ignoredSources = dataSources.filter(
-    source => source.status !== "ready"
+  setStatus(scanStatus,
+    `Đã tìm thấy ${matches.length} bản ghi từ ${sourceCount} nguồn. Mỗi thẻ hiển thị các cột đã chọn của file tương ứng.`,
+    "success"
   );
-
-  if (ignoredSources.length) {
-    message += "\nLưu ý: chưa tìm trong " +
-      ignoredSources.map(source =>
-        `${source.file.name} (${source.status})`
-      ).join("; ");
-  }
-
-  setStatus(scanStatus, message, "success");
   result.scrollIntoView({ behavior: "smooth", block: "start" });
-}}
+}
 $("searchButton").addEventListener("click",()=>searchBarcode(barcodeInput.value));
 barcodeInput.addEventListener("keydown",event=>{if(event.key==="Enter")searchBarcode(barcodeInput.value);});
 $("clearButton").addEventListener("click",()=>{
