@@ -28,16 +28,65 @@ input[type=text],select{width:100%;min-height:48px;padding:12px;border:1px solid
 .source input[type=text]{margin-top:10px}.source-actions{display:flex;gap:8px;margin-top:9px}.source-actions button{flex:1;padding:10px;min-height:42px;font-size:13px}
 .pill{display:inline-flex;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700;background:#e2e8f0;color:#334155;margin-top:5px}.pill.good{background:#dcfce7;color:#166534}.pill.warn{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}
 #cameraStage{position:relative;margin-top:12px;background:#0b1120;border-radius:14px;overflow:hidden;min-height:160px}
-#camera,#frozenFrame{display:block;width:100%;max-height:55vh;min-height:160px;margin:0;background:#0b1120;object-fit:contain}
-#camera[hidden],#frozenFrame[hidden]{display:none!important}
-#viewfinder{position:absolute;left:50%;top:50%;width:min(76%,360px);height:34%;min-height:72px;transform:translate(-50%,-50%);border:0;pointer-events:none}
-#viewfinder:before{content:"";position:absolute;inset:0;border:2px solid #ffffffb8;border-radius:13px;box-shadow:0 0 0 999px #00000020}
-#viewfinder:after{content:"";position:absolute;left:8%;right:8%;top:50%;height:2px;background:#ef4444;box-shadow:0 0 7px #ef4444}
-.camera-top-actions{position:absolute;z-index:3;top:10px;right:10px;display:flex;gap:7px}
-.camera-icon-btn{width:42px;min-height:42px;height:42px;padding:0;border:1px solid #ffffff55;border-radius:50%;background:#101827d9;color:#fff;font-size:19px;box-shadow:0 2px 8px #0004}
-.camera-bottom-actions{display:flex;gap:8px;margin-top:9px}
-.camera-bottom-actions button{flex:1;min-width:0}
-#frozenFrame{object-fit:contain}
+#camera{
+  display:block;
+  width:100%;
+  max-height:55vh;
+  min-height:160px;
+  margin:0;
+  background:#0b1120;
+  object-fit:contain
+}
+#camera[hidden]{display:none!important}
+#viewfinder{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(76%,360px);
+  height:34%;
+  min-height:72px;
+  transform:translate(-50%,-50%);
+  border:0;
+  pointer-events:none
+}
+#viewfinder:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border:2px solid #ffffffb8;
+  border-radius:13px;
+  box-shadow:0 0 0 999px #00000020
+}
+#viewfinder:after{
+  content:"";
+  position:absolute;
+  left:8%;
+  right:8%;
+  top:50%;
+  height:2px;
+  background:#ef4444;
+  box-shadow:0 0 7px #ef4444
+}
+.camera-top-actions{
+  position:absolute;
+  z-index:3;
+  top:10px;
+  right:10px;
+  display:flex;
+  gap:7px
+}
+.camera-icon-btn{
+  width:42px;
+  min-height:42px;
+  height:42px;
+  padding:0;
+  border:1px solid #ffffff55;
+  border-radius:50%;
+  background:#101827d9;
+  color:#fff;
+  font-size:19px;
+  box-shadow:0 2px 8px #0004
+}
 [hidden]{display:none!important}
 #result{overflow-wrap:anywhere}.result-head{margin-bottom:13px}.result-head h2{margin-bottom:5px}
 .results{display:grid;gap:12px}.product-card{border:1px solid var(--line);border-radius:15px;padding:15px;min-width:0;background:#fff}
@@ -98,15 +147,15 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px
       <button id="stopCamera" class="dark" disabled>Dừng camera</button>
       <button id="clearButton" class="light">Xóa kết quả</button>
     </div>
-    <div id="cameraStage" hidden>
-      <video id="camera" autoplay muted playsinline hidden></video>
-      <canvas id="frozenFrame" hidden aria-label="Khung hình đã khóa"></canvas>
-      <div id="viewfinder" aria-hidden="true"></div>
-      <div class="camera-top-actions">
-        <button id="flashButton" class="camera-icon-btn" type="button" aria-label="Bật đèn flash" title="Bật/tắt đèn flash" disabled>⚡</button>
-      </div>
-    </div>
-    <div class="camera-bottom-actions" id="cameraFrameActions" hidden>
+   <div id="cameraStage" hidden>
+  <video id="camera" autoplay muted playsinline hidden></video>
+  <div id="viewfinder" aria-hidden="true"></div>
+  <div class="camera-top-actions">
+    <button id="flashButton" class="camera-icon-btn" type="button"
+      aria-label="Bật đèn flash"
+      title="Bật/tắt đèn flash" disabled>⚡</button>
+  </div>
+</div>
       <button id="lockFrame" class="dark" type="button">🔒 Khóa khung hình</button>
       <button id="resumeCamera" class="light" type="button" hidden>▶ Quét tiếp</button>
     </div>
@@ -130,8 +179,15 @@ const $ = id => document.getElementById(id);
 const fileInput = $("fileInput"), fileStatus = $("fileStatus"), barcodeInput = $("barcodeInput");
 const scanStatus = $("scanStatus"), result = $("result"), resultSummary = $("resultSummary");
 const resultFields = $("resultFields"), sourceList = $("sourceList"), camera = $("camera");
-const cameraStage = $("cameraStage"), frozenFrame = $("frozenFrame"), flashButton = $("flashButton");
-let dataSources = [], pendingColumnSourceId = null, reader = null, controls = null, scanning = false, lastScanned = "", flashOn = false, frozen = false;
+const cameraStage = $("cameraStage"), flashButton = $("flashButton");
+const cameraStage = $("cameraStage"), flashButton = $("flashButton");
+
+let dataSources = [], pendingColumnSourceId = null,
+    reader = null, controls = null, scanning = false,
+    lastScanned = "", flashOn = false;
+
+let scanStream = null, scanTimer = null, detector = null;
+let stableCode = "", stableCount = 0, scanBusy = false;
 
 function setStatus(el, message, type="") { el.textContent = message; el.className = "status" + (type ? " " + type : ""); }
 function normalizeHeader(value) {
@@ -437,122 +493,325 @@ $("clearButton").addEventListener("click",()=>{
   barcodeInput.focus();
 });
 function activeVideoTrack(){
-  const stream=camera.srcObject;
-  return stream?.getVideoTracks?.()[0]||null;
+  return camera.srcObject?.getVideoTracks?.()[0] || null;
 }
-async function setFlash(enabled, announce=true){
-  const track=activeVideoTrack();
-  if(!track){flashOn=false;flashButton.disabled=true;flashButton.textContent="⚡";flashButton.title="Đèn flash chỉ dùng khi camera đang hoạt động";return false;}
-  const capabilities=typeof track.getCapabilities==="function"?track.getCapabilities():{};
-  if(!capabilities.torch){
-    flashButton.disabled=true;flashOn=false;flashButton.textContent="⚡";flashButton.title="Thiết bị/trình duyệt này không hỗ trợ điều khiển đèn flash";
-    if(announce)setStatus(scanStatus,"Camera đang hoạt động nhưng thiết bị/trình duyệt không hỗ trợ bật đèn flash. Bạn vẫn có thể quét hoặc khóa khung hình.","");
+
+function acceptStableCode(value){
+  if(!scanning) return;
+
+  const code = barcodeString(value);
+  if(!code) return;
+
+  if(code === stableCode){
+    stableCount++;
+  }else{
+    stableCode = code;
+    stableCount = 1;
+  }
+
+  // Xác nhận cùng một mã qua ít nhất hai lần nhận diện.
+  if(stableCount < 2 || code === lastScanned) return;
+
+  lastScanned = code;
+  barcodeInput.value = code;
+
+  stopCamera();
+  searchBarcode(code);
+}
+
+async function setFlash(enabled, announce = true){
+  const track = activeVideoTrack();
+  const caps = track?.getCapabilities?.() || {};
+
+  if(!track || !caps.torch){
+    flashOn = false;
+    flashButton.disabled = true;
+    flashButton.textContent = "⚡";
+    flashButton.style.background = "";
+
+    if(announce){
+      setStatus(
+        scanStatus,
+        "Camera này không hỗ trợ điều khiển đèn flash."
+      );
+    }
     return false;
   }
+
   try{
-    await track.applyConstraints({advanced:[{torch:!!enabled}]});
-    flashOn=!!enabled;flashButton.disabled=false;flashButton.textContent=flashOn?"💡":"⚡";
-    flashButton.style.background=flashOn?"#b45309":"#101827d9";
-    flashButton.title=flashOn?"Tắt đèn flash":"Bật đèn flash";
-    if(announce)setStatus(scanStatus,flashOn?"Đã bật đèn flash.":"Đã tắt đèn flash.","success");
+    await track.applyConstraints({
+      advanced:[{torch:!!enabled}]
+    });
+
+    flashOn = !!enabled;
+    flashButton.textContent = flashOn ? "💡" : "⚡";
+    flashButton.style.background =
+      flashOn ? "#b45309" : "#101827d9";
+
     return true;
   }catch(error){
-    flashOn=false;flashButton.textContent="⚡";flashButton.style.background="";
-    if(announce)setStatus(scanStatus,"Không bật được đèn flash trên camera này. Bạn có thể tiếp tục quét bình thường.","");
+    flashOn = false;
+    flashButton.textContent = "⚡";
+    flashButton.style.background = "";
+
+    if(announce){
+      setStatus(
+        scanStatus,
+        "Không bật được đèn flash trên camera này."
+      );
+    }
     return false;
   }
 }
-function decodeFrozenFrame(){
-  return new Promise(resolve=>{
-    if(!reader||!frozenFrame.width||!frozenFrame.height){resolve(false);return;}
-    try{
-      const decoded=reader.decodeFromCanvas(frozenFrame);
-      if(decoded?.getText){const code=decoded.getText();if(code){barcodeInput.value=code;searchBarcode(code);resolve(true);return;}}
-      resolve(false);
-    }catch(error){resolve(false);}
-  });
-}
-function freezeCurrentFrame(){
-  if(!camera.videoWidth||!camera.videoHeight){setStatus(scanStatus,"Chưa có khung hình camera để khóa. Hãy đợi camera hiển thị hình ảnh.","error");return;}
-  frozenFrame.width=camera.videoWidth;frozenFrame.height=camera.videoHeight;
-  const context=frozenFrame.getContext("2d");
-  if(!context){setStatus(scanStatus,"Trình duyệt không hỗ trợ chụp khung hình.","error");return;}
-  context.drawImage(camera,0,0,frozenFrame.width,frozenFrame.height);
-  frozen=true;scanning=false;
-  try{if(controls&&typeof controls.stop==="function")controls.stop();}catch(error){console.warn("Tạm dừng giải mã:",error);}
-  controls=null;camera.pause();camera.hidden=true;frozenFrame.hidden=false;
-  $("viewfinder").hidden=true;$("lockFrame").hidden=true;$("resumeCamera").hidden=false;
-  setStatus(scanStatus,"Khung hình đã được khóa. Đang thử đọc mã vạch từ ảnh cố định…");
-  // decodeFromCanvas is available in some ZXing Browser versions; fallback below uses an image element.
-  const tryDecode=async()=>{
-    let code="";
-    try{
-      if(reader&&typeof reader.decodeFromCanvas==="function"){
-        const result=reader.decodeFromCanvas(frozenFrame);code=result?.getText?.()||"";
-      }
-    }catch(error){}
-    if(!code){
-      try{
-        const dataUrl=frozenFrame.toDataURL("image/png");
-        const img=new Image();img.src=dataUrl;
-        await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
-        if(reader&&typeof reader.decodeFromImageElement==="function"){
-          const decoded=await reader.decodeFromImageElement(img);code=decoded?.getText?.()||"";
-        }
-      }catch(error){}
-    }
-    if(code){barcodeInput.value=code;lastScanned=code;searchBarcode(code);setStatus(scanStatus,"Đã đọc được mã từ khung hình đã khóa.","success");}
-    else setStatus(scanStatus,"Đã khóa ảnh nhưng chưa đọc được mã. Hãy chọn “Quét tiếp”, căn mã rõ hơn rồi khóa lại; bạn cũng có thể nhập mã thủ công.","error");
-  };
-  tryDecode();
-}
+
 async function stopCamera(){
-  scanning=false;frozen=false;
-  try{if(flashOn)await setFlash(false,false);}catch(error){}
-  try{if(controls&&typeof controls.stop==="function")controls.stop();}catch(error){console.warn("Dừng camera:",error);}
-  controls=null;
-  if(camera.srcObject){camera.srcObject.getTracks().forEach(track=>track.stop());camera.srcObject=null;}
-  camera.pause();camera.hidden=true;frozenFrame.hidden=true;cameraStage.hidden=true;
-  $("cameraFrameActions").hidden=true;$("viewfinder").hidden=false;$("lockFrame").hidden=false;$("resumeCamera").hidden=true;
-  flashButton.disabled=true;flashButton.textContent="⚡";flashButton.style.background="";flashOn=false;
-  $("startCamera").disabled=!dataSources.some(s=>s.status==="ready");$("stopCamera").disabled=true;
-}
-async function startCameraScan(){
-  if(!dataSources.some(s=>s.status==="ready")){setStatus(scanStatus,"Hãy tải file Excel hợp lệ trước khi quét.","error");return;}
-  if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){setStatus(scanStatus,"Camera cần HTTPS và trình duyệt hỗ trợ. Hãy mở trang qua HTTPS; bạn vẫn có thể nhập mã thủ công.","error");return;}
-  if(!window.ZXingBrowser){setStatus(scanStatus,"Không tải được thư viện camera. Kiểm tra Internet hoặc nhập mã thủ công.","error");return;}
-  await stopCamera();scanning=true;lastScanned="";frozen=false;
-  $("startCamera").disabled=true;$("stopCamera").disabled=false;cameraStage.hidden=false;camera.hidden=false;frozenFrame.hidden=true;$("cameraFrameActions").hidden=false;$("viewfinder").hidden=false;$("lockFrame").hidden=false;$("resumeCamera").hidden=true;
-  setStatus(scanStatus,"Đang yêu cầu quyền camera…");
+  scanning = false;
+  scanBusy = false;
+
+  if(scanTimer){
+    clearTimeout(scanTimer);
+    scanTimer = null;
+  }
+
   try{
-    reader=new ZXingBrowser.BrowserMultiFormatReader();
-    controls=await reader.decodeFromVideoDevice(undefined,camera,(scanResult,error)=>{
-      if(!scanning||!scanResult)return;
-      const code=scanResult.getText();
-      if(!code||code===lastScanned)return;
-      lastScanned=code;barcodeInput.value=code;searchBarcode(code);stopCamera();
-    });
-    if(scanning){
-      setStatus(scanStatus,"Camera đang hoạt động. Đưa mã vạch vào khung căn chỉnh; dùng nút 🔒 để cố định ảnh nếu cần.","success");
-      const track=activeVideoTrack();
-      const caps=track&&typeof track.getCapabilities==="function"?track.getCapabilities():{};
-      flashButton.disabled=!caps.torch;flashButton.title=caps.torch?"Bật đèn flash":"Thiết bị/trình duyệt không hỗ trợ điều khiển đèn flash";
-      if(!caps.torch)flashButton.style.opacity=".65";
+    if(controls && typeof controls.stop === "function"){
+      controls.stop();
     }
   }catch(error){
-    await stopCamera();let message="Không thể mở camera: "+(error.message||error);
-    if(error.name==="NotAllowedError")message="Bạn chưa cấp quyền camera. Hãy cho phép camera trong trình duyệt.";
-    else if(error.name==="NotFoundError")message="Không tìm thấy camera trên thiết bị.";
-    else if(error.name==="NotReadableError")message="Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó.";
-    setStatus(scanStatus,message,"error");
+    console.warn("Dừng camera:", error);
+  }
+
+  controls = null;
+
+  try{
+    if(flashOn){
+      await setFlash(false, false);
+    }
+  }catch(error){}
+
+  const stream = camera.srcObject;
+
+  if(stream){
+    stream.getTracks().forEach(track => track.stop());
+    camera.srcObject = null;
+  }
+
+  camera.pause();
+  camera.hidden = true;
+  cameraStage.hidden = true;
+
+  flashButton.disabled = true;
+  flashButton.textContent = "⚡";
+  flashButton.style.background = "";
+  flashOn = false;
+
+  detector = null;
+  reader = null;
+  stableCode = "";
+  stableCount = 0;
+
+  $("startCamera").disabled =
+    !dataSources.some(s => s.status === "ready");
+
+  $("stopCamera").disabled = true;
+}
+
+async function startCameraScan(){
+  if(!dataSources.some(s => s.status === "ready")){
+    setStatus(
+      scanStatus,
+      "Hãy tải file Excel hợp lệ trước khi quét.",
+      "error"
+    );
+    return;
+  }
+
+  if(
+    !window.isSecureContext ||
+    !navigator.mediaDevices?.getUserMedia
+  ){
+    setStatus(
+      scanStatus,
+      "Camera cần HTTPS và quyền truy cập camera. Bạn vẫn có thể nhập mã thủ công.",
+      "error"
+    );
+    return;
+  }
+
+  if(!window.ZXingBrowser){
+    setStatus(
+      scanStatus,
+      "Không tải được ZXing. Hãy kiểm tra kết nối Internet.",
+      "error"
+    );
+    return;
+  }
+
+  await stopCamera();
+
+  scanning = true;
+  lastScanned = "";
+  stableCode = "";
+  stableCount = 0;
+
+  $("startCamera").disabled = true;
+  $("stopCamera").disabled = false;
+
+  cameraStage.hidden = false;
+  camera.hidden = false;
+
+  setStatus(scanStatus, "Đang mở camera…");
+
+  try{
+    // Ưu tiên camera sau, độ phân giải vừa phải.
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{
+        facingMode:{ideal:"environment"},
+        width:{ideal:1280},
+        height:{ideal:720},
+        frameRate:{ideal:24, max:30}
+      }
+    });
+
+    // Nếu người dùng đã dừng trong lúc camera đang mở.
+    if(!scanning){
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+
+    camera.srcObject = stream;
+    await camera.play();
+
+    const track = activeVideoTrack();
+    const caps = track?.getCapabilities?.() || {};
+
+    flashButton.disabled = !caps.torch;
+    flashButton.title = caps.torch
+      ? "Bật/tắt đèn flash"
+      : "Camera không hỗ trợ điều khiển đèn flash";
+
+    // Thử zoom nhẹ nếu thiết bị hỗ trợ.
+    if(
+      caps.zoom &&
+      typeof caps.zoom.min === "number" &&
+      typeof caps.zoom.max === "number" &&
+      caps.zoom.max > caps.zoom.min
+    ){
+      try{
+        await track.applyConstraints({
+          advanced:[{
+            zoom:Math.min(caps.zoom.max, caps.zoom.min + 1)
+          }]
+        });
+      }catch(error){}
+    }
+
+    // Ưu tiên BarcodeDetector nếu trình duyệt hỗ trợ.
+    if("BarcodeDetector" in window){
+      try{
+        const supported =
+          await BarcodeDetector.getSupportedFormats();
+
+        const wanted = [
+          "ean_13",
+          "ean_8",
+          "upc_a",
+          "upc_e",
+          "code_128",
+          "code_39",
+          "itf"
+        ].filter(format => supported.includes(format));
+
+        if(wanted.length){
+          detector = new BarcodeDetector({
+            formats:wanted
+          });
+        }
+      }catch(error){
+        detector = null;
+      }
+    }
+
+    if(detector){
+      scanWithNativeDetector();
+
+      setStatus(
+        scanStatus,
+        "Camera đang quét. Đưa mã vạch vào khung căn chỉnh.",
+        "success"
+      );
+    }else{
+      // Dự phòng cho Safari/iPhone và trình duyệt không hỗ trợ
+      // BarcodeDetector bằng ZXing.
+      reader = new ZXingBrowser.BrowserMultiFormatReader();
+
+      controls = await reader.decodeFromVideoDevice(
+        undefined,
+        camera,
+        (scanResult, error) => {
+          if(!scanning || !scanResult) return;
+
+          acceptStableCode(scanResult.getText());
+        }
+      );
+
+      if(scanning){
+        setStatus(
+          scanStatus,
+          "Camera đang quét bằng ZXing. Đưa mã vạch vào khung căn chỉnh.",
+          "success"
+        );
+      }
+    }
+  }catch(error){
+    await stopCamera();
+
+    let message =
+      "Không thể mở camera: " + (error.message || error);
+
+    if(error.name === "NotAllowedError"){
+      message = "Bạn chưa cấp quyền camera trong trình duyệt.";
+    }else if(error.name === "NotFoundError"){
+      message = "Không tìm thấy camera trên thiết bị.";
+    }else if(error.name === "NotReadableError"){
+      message = "Camera đang được ứng dụng khác sử dụng.";
+    }
+
+    setStatus(scanStatus, message, "error");
   }
 }
-$("stopCamera").addEventListener("click",stopCamera);
-$("startCamera").addEventListener("click",startCameraScan);
-flashButton.addEventListener("click",()=>setFlash(!flashOn));
-$("lockFrame").addEventListener("click",freezeCurrentFrame);
-$("resumeCamera").addEventListener("click",startCameraScan);
-window.addEventListener("pagehide",()=>stopCamera());
+
+async function scanWithNativeDetector(){
+  if(!scanning || !detector || scanBusy) return;
+
+  scanBusy = true;
+
+  try{
+    if(
+      camera.readyState >=
+      HTMLMediaElement.HAVE_CURRENT_DATA
+    ){
+      const codes = await detector.detect(camera);
+
+      if(scanning && codes.length){
+        acceptStableCode(codes[0].rawValue);
+      }
+    }
+  }catch(error){
+    // Bỏ qua khung hình lỗi và tiếp tục quét.
+  }finally{
+    scanBusy = false;
+
+    if(scanning && detector){
+      scanTimer = setTimeout(scanWithNativeDetector, 80);
+    }
+  }
+}
+
+$("stopCamera").addEventListener("click", stopCamera);
+$("startCamera").addEventListener("click", startCameraScan);
+flashButton.addEventListener("click", () => setFlash(!flashOn));
 })();
 </script>
 </body>
