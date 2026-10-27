@@ -278,26 +278,107 @@ function finalizeSource(source,index) {
   if(source.status==="error") setStatus(scanStatus,`File "${source.label}" chưa được dùng vì có lỗi dữ liệu. Xem thông báo trong thẻ file.`, "error");
   else setStatus(scanStatus,"Dữ liệu đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.","success");
 }
+
 async function readExcel(file) {
-  if(!window.XLSX) throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
-  const buffer=await file.arrayBuffer();
-  const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
-  if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
-  const sheet=workbook.Sheets[workbook.SheetNames[0]];
-  const table=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:false,blankrows:false});
-  if(!table.length) throw new Error("Sheet Excel đầu tiên trống.");
-  // Ưu tiên hàng có tên cột giống mã hàng/barcode; nếu không có thì chọn hàng
-  // trong 15 hàng đầu có nhiều ô được điền nhất để tránh hàng tiêu đề gộp/trống phía trên.
-  const headerWords = /barcode|bar.?code|mã vạch|mã hàng|mã sp|mã sản phẩm|sku|item code|product code|ean|upc/i;
-  const scanLimit = Math.min(table.length, 15);
-  let headerRowIndex = 0, bestScore = -1;
-  for (let r=0; r<scanLimit; r++) {
-    const cells = table[r].map(v=>String(v??"").trim());
-    const filled = cells.filter(Boolean).length;
-    const hasCodeHeader = cells.some(v=>headerWords.test(v));
-    const score = filled + (hasCodeHeader ? 1000 : 0);
-    if (score > bestScore) { bestScore=score; headerRowIndex=r; }
+  if (!window.XLSX) {
+    throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
   }
+
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, {
+    type: "array",
+    cellDates: false
+  });
+
+  if (!workbook.SheetNames.length) {
+    throw new Error("File Excel không có sheet.");
+  }
+
+  const headerWords =
+    /barcode|bar.?code|mã vạch|mã hàng|mã sp|mã sản phẩm|sku|item code|product code|ean|upc/i;
+
+  let best = null;
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) continue;
+
+    const table = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: "",
+      raw: true,
+      blankrows: false
+    });
+
+    if (!table.length) continue;
+
+    const scanLimit = Math.min(table.length, 15);
+    let headerRowIndex = 0;
+    let bestScore = -1;
+
+    for (let r = 0; r < scanLimit; r++) {
+      const cells = table[r].map(v => String(v ?? "").trim());
+      const filled = cells.filter(Boolean).length;
+      const hasCodeHeader = cells.some(v => headerWords.test(v));
+      const score = filled + (hasCodeHeader ? 1000 : 0);
+
+      if (score > bestScore) {
+        bestScore = score;
+        headerRowIndex = r;
+      }
+    }
+
+    const rawHeaders = table[headerRowIndex].map(
+      v => String(v ?? "").trim()
+    );
+
+    const width = Math.max(
+      rawHeaders.length,
+      ...table.slice(headerRowIndex + 1).map(r => r.length)
+    );
+
+    const headers = Array.from(
+      { length: width },
+      (_, i) => rawHeaders[i] || `Tiêu đề trống (cột ${i + 1})`
+    );
+
+    const rows = table
+      .slice(headerRowIndex + 1)
+      .map(row =>
+        Array.from({ length: width }, (_, i) => row[i] ?? "")
+      )
+      .filter(row =>
+        row.some(value => String(value ?? "").trim() !== "")
+      );
+
+    const barcodeIndex = detectBarcodeColumn(headers);
+    const hasBarcodeHeader = barcodeIndex >= 0;
+    const score =
+      (hasBarcodeHeader ? 100000 : 0) +
+      rows.length;
+
+    if (!best || score > best.score) {
+      best = {
+        headers,
+        rows,
+        headerRowIndex,
+        sheetName,
+        score
+      };
+    }
+  }
+
+  if (!best) {
+    throw new Error("Không tìm thấy sheet có dữ liệu.");
+  }
+
+  return {
+    headers: best.headers,
+    rows: best.rows,
+    headerRowIndex: best.headerRowIndex,
+    sheetName: best.sheetName
+  };
+}
   const rawHeaders=table[headerRowIndex].map(v=>String(v??"").trim());
   const width=Math.max(rawHeaders.length,...table.slice(headerRowIndex+1).map(r=>r.length));
   const headers=Array.from({length:width},(_,i)=>rawHeaders[i] || `Tiêu đề trống (cột ${i+1})`);
