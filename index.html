@@ -84,7 +84,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px
       <select id="barcodeColumn"></select>
       <div class="row"><button id="confirmColumn" class="primary">Xác nhận cột</button></div>
     </div>
-    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt, không tải lên máy chủ. Chỉ đọc sheet đầu tiên. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
+    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt, không tải lên máy chủ. Đọc tất cả các sheet có dữ liệu. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
   </section>
 
   <section class="card">
@@ -131,7 +131,11 @@ const fileInput = $("fileInput"), fileStatus = $("fileStatus"), barcodeInput = $
 const scanStatus = $("scanStatus"), result = $("result"), resultSummary = $("resultSummary");
 const resultFields = $("resultFields"), sourceList = $("sourceList"), camera = $("camera");
 const cameraStage = $("cameraStage"), frozenFrame = $("frozenFrame"), flashButton = $("flashButton");
-let dataSources = [], pendingColumnSourceId = null, reader = null, controls = null, scanning = false, lastScanned = "", flashOn = false, frozen = false;
+let dataSources = [], pendingColumnSourceId = null, reader = null, controls = null, lastScanned = "";
+let flashOn = false, flashBusy = false, torchSupported = false;
+let camState = "idle";      // idle | starting | live | frozen
+let sessionId = 0;          // tăng mỗi khi mở/dừng/khóa: vô hiệu hóa tác vụ cũ
+let pendingStart = null;    // lời hứa của lần mở camera đang chạy
 
 function setStatus(el, message, type="") { el.textContent = message; el.className = "status" + (type ? " " + type : ""); }
 function normalizeHeader(value) {
@@ -171,21 +175,31 @@ function findBarcodeDuplicates(rows, index) {
   // Việc phân biệt nguồn/CTKM dựa vào nhãn nguồn và dữ liệu từng dòng.
   return [];
 }
-function validateRows(columns, rows, index, headerRowIndex=0) {
+// meta[i] = { sheet, line } cho từng dòng dữ liệu (sheet nào, dòng thật trong Excel).
+function validateRows(columns, rows, index, meta=[]) {
   const errors = [];
   if (!columns.length) errors.push("File không có tiêu đề cột.");
   if (index < 0 || index >= columns.length) errors.push("Chưa xác định cột mã vạch.");
   if (errors.length) return {errors,products:[]};
-  rows.forEach((row,i)=>{ if (!barcodeString(row[index])) errors.push(`Dòng ${i+headerRowIndex+2}: thiếu mã vạch.`); });
+  const where = i => {
+    const m = meta[i] || {};
+    return `${m.sheet ? `Sheet "${m.sheet}", ` : ""}dòng ${m.line ?? i+2}`;
+  };
+  rows.forEach((row,i)=>{ if (!barcodeString(row[index])) errors.push(`${where(i)}: thiếu mã vạch.`); });
   errors.push(...findBarcodeDuplicates(rows,index));
   if (errors.length) return {errors,products:[]};
-  const products = rows.map((row,i)=>({barcode:barcodeString(row[index]),values:columns.map((_,j)=>row[j]===undefined?"":row[j]),line:i+headerRowIndex+2}));
+  const products = rows.map((row,i)=>({
+    barcode:barcodeString(row[index]),
+    values:columns.map((_,j)=>row[j]===undefined?"":row[j]),
+    line:meta[i]?.line ?? i+2,
+    sheet:meta[i]?.sheet || ""
+  }));
   return {errors,products};
 }
 function updateSearchAvailability() {
   const ready = dataSources.some(s=>s.status==="ready" && s.products.length);
   $("searchButton").disabled = !ready;
-  $("startCamera").disabled = !ready;
+  syncCameraUI();
 }
 function renderSources() {
   sourceList.replaceChildren();
@@ -196,7 +210,7 @@ function renderSources() {
     const info=document.createElement("div"); info.className="source-info";
     const title=document.createElement("strong"); title.textContent=(dataSources[0]?.id===source.id?"📌 File tổng · ":"📎 File kèm theo · ")+(source.label || source.file.name);
     const filename=document.createElement("div"); filename.className="filename"; filename.textContent=source.file.name;
-    const pill=document.createElement("span"); pill.className="pill "+(source.status==="ready"?"good":source.status==="error"?"bad":"warn"); pill.textContent=source.status==="ready"?`Đã kiểm tra · ${source.products.length} dòng`:source.status==="error"?"Có lỗi":source.status==="pending"?"Cần chọn cột mã vạch":"Đang đọc";
+    const pill=document.createElement("span"); pill.className="pill "+(source.status==="ready"?"good":source.status==="error"?"bad":"warn"); pill.textContent=source.status==="ready"?`Đã kiểm tra · ${source.products.length} dòng${source.sheetCount>1?` · ${source.sheetCount} sheet`:""}`:source.status==="error"?"Có lỗi":source.status==="pending"?"Cần chọn cột mã vạch":"Đang đọc";
     info.append(title,filename,pill); top.append(info); card.append(top);
     const label=document.createElement("label"); label.className="small muted"; label.textContent="Nhãn nguồn (bạn có thể sửa)";
     const input=document.createElement("input"); input.type="text"; input.value=source.label; input.maxLength=80; input.setAttribute("aria-label","Nhãn nguồn "+source.file.name);
@@ -269,7 +283,7 @@ function showColumnPicker(source) {
   $("columnPicker").hidden=false;
 }
 function finalizeSource(source,index) {
-  const validation=validateRows(source.headers,source.rows,index,source.headerRowIndex||0);
+  const validation=validateRows(source.headers,source.rows,index,source.rowMeta||[]);
   source.barcodeIndex=index;
   if(validation.errors.length){source.status="error";source.products=[];source.errors=validation.errors;}
   else {source.status="ready";source.products=validation.products;source.errors=[];}
@@ -279,112 +293,79 @@ function finalizeSource(source,index) {
   else setStatus(scanStatus,"Dữ liệu đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.","success");
 }
 
-async function readExcel(file) {
-  if (!window.XLSX) {
-    throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
+// Đọc MỘT sheet: tự tìm hàng tiêu đề, trả về tiêu đề, các dòng dữ liệu và số dòng thật trong Excel.
+function parseSheet(sheet) {
+  if(!sheet || !sheet["!ref"]) return null;
+  const startRow=XLSX.utils.decode_range(sheet["!ref"]).s.r;
+  // blankrows:true để số dòng khớp đúng dòng thật trong Excel; dòng trống được lọc bên dưới.
+  const table=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:false,blankrows:true});
+  if(!table.length) return null;
+  // Ưu tiên hàng có tên cột giống mã hàng/barcode; nếu không có thì chọn hàng
+  // trong 15 hàng đầu có nhiều ô được điền nhất để tránh hàng tiêu đề gộp/trống phía trên.
+  const headerWords = /barcode|bar.?code|mã vạch|mã hàng|mã sp|mã sản phẩm|sku|item code|product code|ean|upc/i;
+  const scanLimit = Math.min(table.length, 15);
+  let headerRowIndex = 0, bestScore = -1;
+  for (let r=0; r<scanLimit; r++) {
+    const cells = table[r].map(v=>String(v??"").trim());
+    const filled = cells.filter(Boolean).length;
+    const hasCodeHeader = cells.some(v=>headerWords.test(v));
+    const score = filled + (hasCodeHeader ? 1000 : 0);
+    if (score > bestScore) { bestScore=score; headerRowIndex=r; }
   }
-
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, {
-    type: "array",
-    cellDates: false
-  });
-
-  if (!workbook.SheetNames.length) {
-    throw new Error("File Excel không có sheet.");
-  }
-
-  const headerWords =
-    /barcode|bar.?code|mã vạch|mã hàng|mã sp|mã sản phẩm|sku|item code|product code|ean|upc/i;
-
-  let best = null;
-
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-    if (!sheet) continue;
-
-    const table = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      defval: "",
-      raw: true,
-      blankrows: false
-    });
-
-    if (!table.length) continue;
-
-    const scanLimit = Math.min(table.length, 15);
-    let headerRowIndex = 0;
-    let bestScore = -1;
-
-    for (let r = 0; r < scanLimit; r++) {
-      const cells = table[r].map(v => String(v ?? "").trim());
-      const filled = cells.filter(Boolean).length;
-      const hasCodeHeader = cells.some(v => headerWords.test(v));
-      const score = filled + (hasCodeHeader ? 1000 : 0);
-
-      if (score > bestScore) {
-        bestScore = score;
-        headerRowIndex = r;
-      }
-    }
-
-    const rawHeaders = table[headerRowIndex].map(
-      v => String(v ?? "").trim()
-    );
-
-    const width = Math.max(
-      rawHeaders.length,
-      ...table.slice(headerRowIndex + 1).map(r => r.length)
-    );
-
-    const headers = Array.from(
-      { length: width },
-      (_, i) => rawHeaders[i] || `Tiêu đề trống (cột ${i + 1})`
-    );
-
-    const rows = table
-      .slice(headerRowIndex + 1)
-      .map(row =>
-        Array.from({ length: width }, (_, i) => row[i] ?? "")
-      )
-      .filter(row =>
-        row.some(value => String(value ?? "").trim() !== "")
-      );
-
-    const barcodeIndex = detectBarcodeColumn(headers);
-    const hasBarcodeHeader = barcodeIndex >= 0;
-    const score =
-      (hasBarcodeHeader ? 100000 : 0) +
-      rows.length;
-
-    if (!best || score > best.score) {
-      best = {
-        headers,
-        rows,
-        headerRowIndex,
-        sheetName,
-        score
-      };
-    }
-  }
-
-  if (!best) {
-    throw new Error("Không tìm thấy sheet có dữ liệu.");
-  }
-
-  return {
-    headers: best.headers,
-    rows: best.rows,
-    headerRowIndex: best.headerRowIndex,
-    sheetName: best.sheetName
-  };
-}
   const rawHeaders=table[headerRowIndex].map(v=>String(v??"").trim());
-  const width=Math.max(rawHeaders.length,...table.slice(headerRowIndex+1).map(r=>r.length));
+  if(!rawHeaders.some(Boolean)) return null;
+  let width=rawHeaders.length;
+  for (let r=headerRowIndex+1; r<table.length; r++) if (table[r].length>width) width=table[r].length;
   const headers=Array.from({length:width},(_,i)=>rawHeaders[i] || `Tiêu đề trống (cột ${i+1})`);
-  const rows=table.slice(headerRowIndex+1).map(row=>Array.from({length:width},(_,i)=>row[i]??""))
-    .filter(row=>row.some(value=>String(value??"").trim()!==""));
-  return {headers,rows,headerRowIndex};
+  const rows=[], lines=[];
+  for (let r=headerRowIndex+1; r<table.length; r++) {
+    const row=Array.from({length:width},(_,i)=>table[r][i]??"");
+    if (row.some(value=>String(value??"").trim()!=="")) { rows.push(row); lines.push(startRow+r+1); }
+  }
+  if(!rows.length) return null;
+  return {headers,rows,lines};
+}
+
+// Đọc TẤT CẢ các sheet có dữ liệu và gộp thành một nguồn.
+// Cột cùng tên (không phân biệt hoa/thường, dấu) ở các sheet khác nhau được gộp chung một cột;
+// cột mới chỉ có ở sheet khác sẽ được thêm vào cuối.
+async function readExcel(file) {
+  if(!window.XLSX) throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
+  const buffer=await file.arrayBuffer();
+  const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
+  if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
+  const headers=[], keyIndex=new Map(), rawRows=[], meta=[];
+  let sheetCount=0;
+  for (const name of workbook.SheetNames) {
+    const parsed=parseSheet(workbook.Sheets[name]);
+    if(!parsed) continue;
+    sheetCount++;
+    const used=new Map();
+    const colMap=parsed.headers.map((h,i)=>{
+      const isEmpty=h.startsWith("Tiêu đề trống");
+      let key=isEmpty?`__empty${i}`:(normalizeHeader(h)||`__raw${h}`);
+      const n=(used.get(key)||0)+1; used.set(key,n);
+      if(n>1) key+=`#${n}`;             // hai cột trùng tên trong cùng sheet vẫn là hai cột riêng
+      if(!keyIndex.has(key)){keyIndex.set(key,headers.length);headers.push(h);}
+      return keyIndex.get(key);
+    });
+    parsed.rows.forEach((row,k)=>{
+      const out=[];
+      colMap.forEach((target,i)=>{out[target]=row[i];});
+      rawRows.push(out);
+      meta.push({sheet:name,line:parsed.lines[k]});
+    });
+  }
+  if(!sheetCount) throw new Error("Không có sheet nào chứa dữ liệu.");
+  const addSheetCol=sheetCount>1;
+  if(addSheetCol) headers.push("Tên sheet");
+  const width=headers.length;
+  const rows=rawRows.map((r,k)=>{
+    const out=Array.from({length:width},(_,i)=>r[i]??"");
+    if(addSheetCol) out[width-1]=meta[k].sheet;
+    return out;
+  });
+  return {headers,rows,meta,sheetCount};
 }
 async function fingerprint(file) {
   const buffer=await file.arrayBuffer();
@@ -412,10 +393,10 @@ async function addFiles(files) {
       const keep=window.confirm(`File "${file.name}" có nội dung giống file "${duplicate.file.name}".\n\nOK: vẫn giữ file này như một nguồn riêng.\nCancel: bỏ qua file trùng.`);
       if(!keep)continue;
     }
-    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],products:[],barcodeIndex:-1,errors:[]};
+    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],rowMeta:[],sheetCount:0,products:[],barcodeIndex:-1,errors:[]};
     dataSources.push(source);renderSources();
     try{
-      const parsed=await readExcel(file);source.headers=parsed.headers;source.rows=parsed.rows;source.headerRowIndex=parsed.headerRowIndex||0;
+      const parsed=await readExcel(file);source.headers=parsed.headers;source.rows=parsed.rows;source.rowMeta=parsed.meta;source.sheetCount=parsed.sheetCount;
       if(!source.headers.length) throw new Error("File không có tiêu đề cột.");
       const index=detectBarcodeColumn(source.headers);
       if(index===-1){source.status="pending";renderSources();showColumnPicker(source);setStatus(fileStatus,`Cần chọn cột mã vạch cho "${source.file.name}".`,"error");}
@@ -443,7 +424,7 @@ function renderProductCard(source,product,query) {
   const visibleForTitle=Array.isArray(source.displayColumns)?source.displayColumns:source.headers.map((_,i)=>i);
   const nameIndex=source.headers.findIndex((h,i)=>visibleForTitle.includes(i)&&classifyField(h)==="name");
   const title=document.createElement("h3");title.className="product-title";title.textContent=nameIndex>=0&&displayValue(product.values[nameIndex]).trim()?displayValue(product.values[nameIndex]):"Thông tin sản phẩm";card.append(title);
-  const code=document.createElement("div");code.className="barcode-line";code.textContent=`Mã vạch: ${query} · Dòng Excel: ${product.line}`;card.append(code);
+  const code=document.createElement("div");code.className="barcode-line";code.textContent=`Mã vạch: ${query} · ${product.sheet&&source.sheetCount>1?`Sheet: ${product.sheet} · `:""}Dòng Excel: ${product.line}`;card.append(code);
   const priorities=["price","oldPrice","discount","promotion","name"];
   const visible=Array.isArray(source.displayColumns)?source.displayColumns:source.headers.map((_,i)=>i);
   const chosen=[];
@@ -517,123 +498,241 @@ $("clearButton").addEventListener("click",()=>{
   setStatus(scanStatus,dataSources.some(s=>s.status==="ready")?"Đã xóa kết quả. Bạn có thể tra cứu mã khác.":"Hãy tải file Excel hợp lệ trước.");
   barcodeInput.focus();
 });
+
+// ===================== CAMERA =====================
 function activeVideoTrack(){
-  const stream=camera.srcObject;
-  return stream?.getVideoTracks?.()[0]||null;
+  const stream = camera.srcObject;
+  return stream?.getVideoTracks?.()[0] || null;
 }
-async function setFlash(enabled, announce=true){
-  const track=activeVideoTrack();
-  if(!track){flashOn=false;flashButton.disabled=true;flashButton.textContent="⚡";flashButton.title="Đèn flash chỉ dùng khi camera đang hoạt động";return false;}
-  const capabilities=typeof track.getCapabilities==="function"?track.getCapabilities():{};
-  if(!capabilities.torch){
-    flashButton.disabled=true;flashOn=false;flashButton.textContent="⚡";flashButton.title="Thiết bị/trình duyệt này không hỗ trợ điều khiển đèn flash";
-    if(announce)setStatus(scanStatus,"Camera đang hoạt động nhưng thiết bị/trình duyệt không hỗ trợ bật đèn flash. Bạn vẫn có thể quét hoặc khóa khung hình.","");
-    return false;
-  }
-  try{
-    await track.applyConstraints({advanced:[{torch:!!enabled}]});
-    flashOn=!!enabled;flashButton.disabled=false;flashButton.textContent=flashOn?"💡":"⚡";
-    flashButton.style.background=flashOn?"#b45309":"#101827d9";
-    flashButton.title=flashOn?"Tắt đèn flash":"Bật đèn flash";
-    if(announce)setStatus(scanStatus,flashOn?"Đã bật đèn flash.":"Đã tắt đèn flash.","success");
-    return true;
-  }catch(error){
-    flashOn=false;flashButton.textContent="⚡";flashButton.style.background="";
-    if(announce)setStatus(scanStatus,"Không bật được đèn flash trên camera này. Bạn có thể tiếp tục quét bình thường.","");
-    return false;
-  }
+
+// Đồng bộ toàn bộ giao diện camera theo đúng một trạng thái duy nhất (camState).
+function syncCameraUI(){
+  const hasData = dataSources.some(s=>s.status==="ready" && s.products.length);
+  const st = camState;
+  $("startCamera").disabled = !hasData || st==="starting" || st==="live";
+  $("stopCamera").disabled = st==="idle";
+  cameraStage.hidden = st==="idle";
+  camera.hidden = !(st==="starting" || st==="live");
+  frozenFrame.hidden = st!=="frozen";
+  $("viewfinder").hidden = st==="frozen";
+  $("cameraFrameActions").hidden = st==="idle";
+  $("lockFrame").hidden = st==="frozen";
+  $("lockFrame").disabled = st!=="live";
+  $("resumeCamera").hidden = st!=="frozen";
+  $("resumeCamera").disabled = !hasData;
+
+  const canFlash = st==="live" && torchSupported && !flashBusy;
+  flashButton.disabled = !canFlash;
+  flashButton.textContent = flashOn ? "💡" : "⚡";
+  flashButton.style.background = flashOn ? "#b45309" : "";
+  flashButton.setAttribute("aria-label", flashOn ? "Tắt đèn flash" : "Bật đèn flash");
+  flashButton.title =
+    st!=="live" ? "Đèn flash chỉ dùng khi camera đang quét" :
+    !torchSupported ? "Thiết bị/trình duyệt này không hỗ trợ điều khiển đèn flash" :
+    flashOn ? "Tắt đèn flash" : "Bật đèn flash";
 }
-function decodeFrozenFrame(){
-  return new Promise(resolve=>{
-    if(!reader||!frozenFrame.width||!frozenFrame.height){resolve(false);return;}
-    try{
-      const decoded=reader.decodeFromCanvas(frozenFrame);
-      if(decoded?.getText){const code=decoded.getText();if(code){barcodeInput.value=code;searchBarcode(code);resolve(true);return;}}
-      resolve(false);
-    }catch(error){resolve(false);}
-  });
+
+// Giải phóng luồng camera. An toàn khi gọi nhiều lần.
+function releaseCamera(){
+  const c = controls; controls = null;
+  const stream = camera.srcObject;
+  try { c?.stop?.(); } catch (error) { console.warn("Dừng bộ giải mã:", error); }
+  try { stream?.getTracks?.().forEach(t=>{ if(t.readyState!=="ended") t.stop(); }); } catch (error) {}
+  try { camera.pause(); } catch (error) {}
+  camera.srcObject = null;
+  flashOn = false; torchSupported = false; flashBusy = false;
 }
-function freezeCurrentFrame(){
-  if(!camera.videoWidth||!camera.videoHeight){setStatus(scanStatus,"Chưa có khung hình camera để khóa. Hãy đợi camera hiển thị hình ảnh.","error");return;}
-  frozenFrame.width=camera.videoWidth;frozenFrame.height=camera.videoHeight;
-  const context=frozenFrame.getContext("2d");
-  if(!context){setStatus(scanStatus,"Trình duyệt không hỗ trợ chụp khung hình.","error");return;}
-  context.drawImage(camera,0,0,frozenFrame.width,frozenFrame.height);
-  frozen=true;scanning=false;
-  try{if(controls&&typeof controls.stop==="function")controls.stop();}catch(error){console.warn("Tạm dừng giải mã:",error);}
-  controls=null;camera.pause();camera.hidden=true;frozenFrame.hidden=false;
-  $("viewfinder").hidden=true;$("lockFrame").hidden=true;$("resumeCamera").hidden=false;
-  setStatus(scanStatus,"Khung hình đã được khóa. Đang thử đọc mã vạch từ ảnh cố định…");
-  // decodeFromCanvas is available in some ZXing Browser versions; fallback below uses an image element.
-  const tryDecode=async()=>{
-    let code="";
-    try{
-      if(reader&&typeof reader.decodeFromCanvas==="function"){
-        const result=reader.decodeFromCanvas(frozenFrame);code=result?.getText?.()||"";
-      }
-    }catch(error){}
-    if(!code){
-      try{
-        const dataUrl=frozenFrame.toDataURL("image/png");
-        const img=new Image();img.src=dataUrl;
-        await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
-        if(reader&&typeof reader.decodeFromImageElement==="function"){
-          const decoded=await reader.decodeFromImageElement(img);code=decoded?.getText?.()||"";
-        }
-      }catch(error){}
-    }
-    if(code){barcodeInput.value=code;lastScanned=code;searchBarcode(code);setStatus(scanStatus,"Đã đọc được mã từ khung hình đã khóa.","success");}
-    else setStatus(scanStatus,"Đã khóa ảnh nhưng chưa đọc được mã. Hãy chọn “Quét tiếp”, căn mã rõ hơn rồi khóa lại; bạn cũng có thể nhập mã thủ công.","error");
-  };
-  tryDecode();
+
+function clearFrozen(){
+  frozenFrame.width = 0; frozenFrame.height = 0;
 }
-async function stopCamera(){
-  scanning=false;frozen=false;
-  try{if(flashOn)await setFlash(false,false);}catch(error){}
-  try{if(controls&&typeof controls.stop==="function")controls.stop();}catch(error){console.warn("Dừng camera:",error);}
-  controls=null;
-  if(camera.srcObject){camera.srcObject.getTracks().forEach(track=>track.stop());camera.srcObject=null;}
-  camera.pause();camera.hidden=true;frozenFrame.hidden=true;cameraStage.hidden=true;
-  $("cameraFrameActions").hidden=true;$("viewfinder").hidden=false;$("lockFrame").hidden=false;$("resumeCamera").hidden=true;
-  flashButton.disabled=true;flashButton.textContent="⚡";flashButton.style.background="";flashOn=false;
-  $("startCamera").disabled=!dataSources.some(s=>s.status==="ready");$("stopCamera").disabled=true;
+
+// Dừng hoàn toàn. Không đụng tới file Excel và kết quả tra cứu hiện tại.
+function stopCamera(message){
+  const wasActive = camState !== "idle";
+  sessionId++;                 // vô hiệu hóa mọi callback/tác vụ bất đồng bộ cũ
+  releaseCamera();
+  clearFrozen();
+  reader = null;
+  camState = "idle";
+  syncCameraUI();
+  if (typeof message === "string" && wasActive) setStatus(scanStatus, message);
 }
+
+function cameraErrorMessage(error){
+  const n = error?.name || "";
+  if (n==="NotAllowedError" || n==="SecurityError" || n==="PermissionDeniedError")
+    return "Bạn chưa cấp quyền camera. Hãy cho phép camera trong trình duyệt rồi thử lại.";
+  if (n==="NotFoundError" || n==="DevicesNotFoundError" || n==="OverconstrainedError")
+    return "Không tìm thấy camera phù hợp trên thiết bị.";
+  if (n==="NotReadableError" || n==="TrackStartError" || n==="AbortError")
+    return "Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.";
+  return "Không thể mở camera: " + (error?.message || error);
+}
+
 async function startCameraScan(){
-  if(!dataSources.some(s=>s.status==="ready")){setStatus(scanStatus,"Hãy tải file Excel hợp lệ trước khi quét.","error");return;}
-  if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){setStatus(scanStatus,"Camera cần HTTPS và trình duyệt hỗ trợ. Hãy mở trang qua HTTPS; bạn vẫn có thể nhập mã thủ công.","error");return;}
-  if(!window.ZXingBrowser){setStatus(scanStatus,"Không tải được thư viện camera. Kiểm tra Internet hoặc nhập mã thủ công.","error");return;}
-  await stopCamera();scanning=true;lastScanned="";frozen=false;
-  $("startCamera").disabled=true;$("stopCamera").disabled=false;cameraStage.hidden=false;camera.hidden=false;frozenFrame.hidden=true;$("cameraFrameActions").hidden=false;$("viewfinder").hidden=false;$("lockFrame").hidden=false;$("resumeCamera").hidden=true;
-  setStatus(scanStatus,"Đang yêu cầu quyền camera…");
-  try{
-    reader=new ZXingBrowser.BrowserMultiFormatReader();
-    controls=await reader.decodeFromVideoDevice(undefined,camera,(scanResult,error)=>{
-      if(!scanning||!scanResult)return;
-      const code=scanResult.getText();
-      if(!code||code===lastScanned)return;
-      lastScanned=code;barcodeInput.value=code;searchBarcode(code);stopCamera();
-    });
-    if(scanning){
-      setStatus(scanStatus,"Camera đang hoạt động. Đưa mã vạch vào khung căn chỉnh; dùng nút 🔒 để cố định ảnh nếu cần.","success");
-      const track=activeVideoTrack();
-      const caps=track&&typeof track.getCapabilities==="function"?track.getCapabilities():{};
-      flashButton.disabled=!caps.torch;flashButton.title=caps.torch?"Bật đèn flash":"Thiết bị/trình duyệt không hỗ trợ điều khiển đèn flash";
-      if(!caps.torch)flashButton.style.opacity=".65";
+  if (camState==="starting" || camState==="live") return;
+  if (!dataSources.some(s=>s.status==="ready")) { setStatus(scanStatus,"Hãy tải file Excel hợp lệ trước khi quét.","error"); return; }
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { setStatus(scanStatus,"Camera cần HTTPS và trình duyệt hỗ trợ. Hãy mở trang qua HTTPS; bạn vẫn có thể nhập mã thủ công.","error"); return; }
+  if (!window.ZXingBrowser) { setStatus(scanStatus,"Không tải được thư viện camera. Kiểm tra Internet hoặc nhập mã thủ công.","error"); return; }
+
+  const sid = ++sessionId;
+  clearFrozen();
+  camState = "starting";
+  syncCameraUI();
+  setStatus(scanStatus, "Đang mở camera…");
+
+  // Nếu lần mở trước (đã bị dừng) vẫn đang chờ thư viện, đợi nó tự dọn xong rồi mới mở lại.
+  if (pendingStart) {
+    try { await pendingStart; } catch (error) {}
+    if (sid !== sessionId) return;
+  }
+  releaseCamera();
+
+  const job = (async () => {
+    let handled = false;
+    const r = new ZXingBrowser.BrowserMultiFormatReader();
+    reader = r;
+
+    const onResult = (scanResult) => {
+      if (sid !== sessionId || handled || !scanResult) return;   // bỏ callback cũ, lỗi, và kết quả lặp
+      let code = "";
+      try { code = barcodeString(scanResult.getText()); } catch (error) { return; }
+      if (!code) return;
+      handled = true;                                            // chỉ tra cứu đúng một lần
+      lastScanned = code;
+      stopCamera();                                              // dừng trước để không còn callback nào nữa
+      barcodeInput.value = code;
+      searchBarcode(code);
+    };
+
+    try {
+      let c;
+      if (typeof r.decodeFromConstraints === "function") {
+        c = await r.decodeFromConstraints(
+          { audio:false, video:{ facingMode:{ ideal:"environment" }, width:{ ideal:1280 }, height:{ ideal:720 } } },
+          camera, onResult);
+      } else {
+        c = await r.decodeFromVideoDevice(undefined, camera, onResult);
+      }
+
+      controls = c;
+      if (sid !== sessionId) {          // người dùng đã dừng/khóa/đóng trong lúc khởi tạo
+        releaseCamera();                // dừng ngay phiên vừa tạo
+        return;
+      }
+
+      const track = activeVideoTrack();
+      if (!track || track.readyState !== "live") {
+        const e = new Error("Camera không cung cấp luồng video."); e.name = "NotReadableError"; throw e;
+      }
+      const caps = typeof track.getCapabilities === "function" ? track.getCapabilities() : {};
+      torchSupported = !!caps.torch;
+      flashOn = false;
+      camState = "live";
+      syncCameraUI();
+      setStatus(scanStatus, "Camera đang hoạt động. Đưa mã vạch vào khung căn chỉnh; dùng nút 🔒 để cố định ảnh nếu cần.", "success");
+    } catch (error) {
+      if (sid !== sessionId) { releaseCamera(); return; }       // lỗi của phiên đã bị hủy: bỏ qua
+      stopCamera();
+      setStatus(scanStatus, cameraErrorMessage(error), "error");
     }
-  }catch(error){
-    await stopCamera();let message="Không thể mở camera: "+(error.message||error);
-    if(error.name==="NotAllowedError")message="Bạn chưa cấp quyền camera. Hãy cho phép camera trong trình duyệt.";
-    else if(error.name==="NotFoundError")message="Không tìm thấy camera trên thiết bị.";
-    else if(error.name==="NotReadableError")message="Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó.";
-    setStatus(scanStatus,message,"error");
+  })();
+
+  pendingStart = job;
+  await job;
+  if (pendingStart === job) pendingStart = null;
+}
+
+async function setFlash(enabled, announce=true){
+  const track = activeVideoTrack();
+  if (camState!=="live" || !track || track.readyState!=="live" || !torchSupported || flashBusy) {
+    if (camState!=="live") flashOn = false;
+    syncCameraUI();
+    return false;
+  }
+  const sid = sessionId;
+  flashBusy = true; syncCameraUI();
+  try {
+    await track.applyConstraints({ advanced:[{ torch: !!enabled }] });
+    if (sid !== sessionId) return false;
+    flashOn = !!enabled;           // chỉ đổi trạng thái khi thao tác thực sự thành công
+    if (announce) setStatus(scanStatus, flashOn ? "Đã bật đèn flash." : "Đã tắt đèn flash.", "success");
+    return true;
+  } catch (error) {
+    if (sid === sessionId && announce) setStatus(scanStatus, "Không điều khiển được đèn flash trên camera này. Bạn vẫn có thể quét bình thường.", "");
+    return false;
+  } finally {
+    flashBusy = false;
+    syncCameraUI();
   }
 }
-$("stopCamera").addEventListener("click",stopCamera);
-$("startCamera").addEventListener("click",startCameraScan);
-flashButton.addEventListener("click",()=>setFlash(!flashOn));
-$("lockFrame").addEventListener("click",freezeCurrentFrame);
-$("resumeCamera").addEventListener("click",startCameraScan);
-window.addEventListener("pagehide",()=>stopCamera());
+
+// Giải mã ảnh tĩnh: chỉ MỘT đường giải mã, ưu tiên decodeFromCanvas (đồng bộ).
+async function decodeStill(r, sid){
+  let text = "";
+  try {
+    let res = null;
+    if (typeof r.decodeFromCanvas === "function") {
+      res = r.decodeFromCanvas(frozenFrame);
+    } else if (typeof r.decodeFromImageElement === "function") {
+      const img = new Image();
+      img.src = frozenFrame.toDataURL("image/png");
+      await new Promise((resolve,reject)=>{ img.onload = resolve; img.onerror = reject; });
+      res = await r.decodeFromImageElement(img);
+    }
+    text = res?.getText?.() || "";
+  } catch (error) {
+    if (error?.name !== "NotFoundException") console.warn("Giải mã ảnh tĩnh:", error);
+  }
+  if (sid !== sessionId || camState !== "frozen") return;       // đã bấm Quét tiếp/Dừng: bỏ kết quả muộn
+  const code = barcodeString(text);
+  if (code) {
+    lastScanned = code;
+    barcodeInput.value = code;
+    searchBarcode(code);        // searchBarcode tự cập nhật scanStatus; ảnh khóa vẫn được giữ
+  } else {
+    setStatus(scanStatus, "Đã khóa ảnh nhưng chưa đọc được mã. Hãy chọn “Quét tiếp”, căn mã rõ hơn rồi khóa lại; bạn cũng có thể nhập mã thủ công.", "error");
+  }
+}
+
+function freezeCurrentFrame(){
+  if (camState !== "live") return;
+  const w = camera.videoWidth, h = camera.videoHeight;
+  if (camera.readyState < 2 || !w || !h) {
+    setStatus(scanStatus, "Chưa có khung hình camera để khóa. Hãy đợi camera hiển thị hình ảnh.", "error");
+    return;
+  }
+  try {
+    frozenFrame.width = w; frozenFrame.height = h;               // đúng kích thước video
+    const context = frozenFrame.getContext("2d");
+    if (!context) throw new Error("no-2d");
+    context.drawImage(camera, 0, 0, w, h);
+  } catch (error) {
+    clearFrozen();
+    setStatus(scanStatus, "Không chụp được khung hình. Hãy thử lại.", "error");
+    return;                                                       // camera vẫn chạy bình thường
+  }
+
+  const sid = ++sessionId;                                        // dừng mọi callback giải mã liên tục
+  const stillReader = reader || new ZXingBrowser.BrowserMultiFormatReader();
+  releaseCamera();                                                // nhả camera + tắt flash, giữ nguyên frozenFrame
+  camState = "frozen";
+  syncCameraUI();
+  setStatus(scanStatus, "Khung hình đã được khóa. Đang thử đọc mã vạch từ ảnh cố định…");
+  decodeStill(stillReader, sid);
+}
+
+$("stopCamera").addEventListener("click", () => stopCamera("Camera đã dừng."));
+$("startCamera").addEventListener("click", startCameraScan);
+$("resumeCamera").addEventListener("click", startCameraScan);
+$("lockFrame").addEventListener("click", freezeCurrentFrame);
+flashButton.addEventListener("click", () => setFlash(!flashOn));
+window.addEventListener("pagehide", () => stopCamera());
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && (camState==="live" || camState==="starting"))
+    stopCamera("Camera đã dừng vì bạn rời khỏi trang. Bấm “Quét mã” để mở lại.");
+});
 })();
 </script>
 </body>
