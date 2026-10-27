@@ -84,7 +84,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 12px 24px
       <select id="barcodeColumn"></select>
       <div class="row"><button id="confirmColumn" class="primary">Xác nhận cột</button></div>
     </div>
-    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt, không tải lên máy chủ. Đọc tất cả các sheet có dữ liệu. Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
+    <p class="muted small" style="margin-top:12px">File được xử lý ngay trong trình duyệt, không tải lên máy chủ. Đọc các sheet có cột mã vạch (bỏ qua sheet ẩn). Không đưa file chứa dữ liệu nhạy cảm lên nơi công khai.</p>
   </section>
 
   <section class="card">
@@ -136,6 +136,9 @@ let flashOn = false, flashBusy = false, torchSupported = false;
 let camState = "idle";      // idle | starting | live | frozen
 let sessionId = 0;          // tăng mỗi khi mở/dừng/khóa: vô hiệu hóa tác vụ cũ
 let pendingStart = null;    // lời hứa của lần mở camera đang chạy
+// ---- Cấu hình đọc Excel ----
+const READ_ALL_SHEETS = true;      // true: đọc mọi sheet có cột mã vạch; false: chỉ đọc sheet đầu tiên (không ẩn)
+const SKIP_HIDDEN_SHEETS = true;   // true: bỏ qua sheet bị ẩn (thường là dữ liệu cũ)
 
 function setStatus(el, message, type="") { el.textContent = message; el.className = "status" + (type ? " " + type : ""); }
 function normalizeHeader(value) {
@@ -211,7 +214,9 @@ function renderSources() {
     const title=document.createElement("strong"); title.textContent=(dataSources[0]?.id===source.id?"📌 File tổng · ":"📎 File kèm theo · ")+(source.label || source.file.name);
     const filename=document.createElement("div"); filename.className="filename"; filename.textContent=source.file.name;
     const pill=document.createElement("span"); pill.className="pill "+(source.status==="ready"?"good":source.status==="error"?"bad":"warn"); pill.textContent=source.status==="ready"?`Đã kiểm tra · ${source.products.length} dòng${source.sheetCount>1?` · ${source.sheetCount} sheet`:""}`:source.status==="error"?"Có lỗi":source.status==="pending"?"Cần chọn cột mã vạch":"Đang đọc";
-    info.append(title,filename,pill); top.append(info); card.append(top);
+    info.append(title,filename,pill);
+    if(source.skippedSheets?.length){const sk=document.createElement("div");sk.className="small muted";sk.style.marginTop="5px";sk.textContent="Bỏ qua sheet: "+source.skippedSheets.join("; ");info.append(sk);}
+    top.append(info); card.append(top);
     const label=document.createElement("label"); label.className="small muted"; label.textContent="Nhãn nguồn (bạn có thể sửa)";
     const input=document.createElement("input"); input.type="text"; input.value=source.label; input.maxLength=80; input.setAttribute("aria-label","Nhãn nguồn "+source.file.name);
     input.addEventListener("change",()=>{source.label=input.value.trim()||source.file.name; renderSources();});
@@ -293,6 +298,16 @@ function finalizeSource(source,index) {
   else setStatus(scanStatus,"Dữ liệu đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.","success");
 }
 
+// Số dài ở định dạng General bị SheetJS hiển thị dạng "8.05178E+12" -> lấy lại giá trị thật để không mất mã vạch.
+const SCI_NUMBER = /^-?\d(?:\.\d+)?E\+\d+$/i;
+// Tên cột được coi là cột mã vạch (đã chuẩn hóa bằng normalizeHeader).
+const BARCODE_HEADER = /barcode|mavach|ean13|ean8|upca|upce|^ean$|^eanupc/;
+function barcodeIndexOf(headers) {
+  let i = detectBarcodeColumn(headers);
+  if (i === -1) i = headers.findIndex(h => BARCODE_HEADER.test(normalizeHeader(h)));
+  return i;
+}
+
 // Đọc MỘT sheet: tự tìm hàng tiêu đề, trả về tiêu đề, các dòng dữ liệu và số dòng thật trong Excel.
 function parseSheet(sheet) {
   if(!sheet || !sheet["!ref"]) return null;
@@ -317,34 +332,68 @@ function parseSheet(sheet) {
   let width=rawHeaders.length;
   for (let r=headerRowIndex+1; r<table.length; r++) if (table[r].length>width) width=table[r].length;
   const headers=Array.from({length:width},(_,i)=>rawHeaders[i] || `Tiêu đề trống (cột ${i+1})`);
+
+  let rawTable=null;   // chỉ đọc bản giá trị gốc khi thật sự gặp số dạng E+
+  const cellValue=(r,i)=>{
+    const v=table[r][i]??"";
+    if(typeof v==="string" && SCI_NUMBER.test(v)){
+      if(!rawTable) rawTable=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:true,blankrows:true});
+      const n=rawTable[r]?.[i];
+      if(typeof n==="number" && Number.isInteger(n) && Math.abs(n)<1e21) return String(n);
+    }
+    return v;
+  };
+
   const rows=[], lines=[];
   for (let r=headerRowIndex+1; r<table.length; r++) {
-    const row=Array.from({length:width},(_,i)=>table[r][i]??"");
+    const row=Array.from({length:width},(_,i)=>cellValue(r,i));
     if (row.some(value=>String(value??"").trim()!=="")) { rows.push(row); lines.push(startRow+r+1); }
   }
   if(!rows.length) return null;
   return {headers,rows,lines};
 }
 
-// Đọc TẤT CẢ các sheet có dữ liệu và gộp thành một nguồn.
-// Cột cùng tên (không phân biệt hoa/thường, dấu) ở các sheet khác nhau được gộp chung một cột;
-// cột mới chỉ có ở sheet khác sẽ được thêm vào cuối.
+// Đọc các sheet cần thiết và gộp thành một nguồn:
+//  - bỏ qua sheet ẩn (nếu SKIP_HIDDEN_SHEETS), sheet trống,
+//  - nếu có sheet có cột mã vạch thì bỏ qua các sheet KHÔNG có cột mã vạch (ví dụ sheet ghi chú),
+//  - cột mã vạch của các sheet được gộp chung một cột; các cột cùng tên khác cũng gộp chung.
 async function readExcel(file) {
   if(!window.XLSX) throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
   const buffer=await file.arrayBuffer();
   const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
   if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
-  const headers=[], keyIndex=new Map(), rawRows=[], meta=[];
-  let sheetCount=0;
-  for (const name of workbook.SheetNames) {
+
+  const skipped=[];
+  const sheetMeta=workbook.Workbook?.Sheets||[];
+  let names=[];
+  workbook.SheetNames.forEach((name,idx)=>{
+    if(SKIP_HIDDEN_SHEETS && sheetMeta[idx]?.Hidden) skipped.push(`${name} (đang ẩn)`);
+    else names.push(name);
+  });
+  if(!names.length){ names=[...workbook.SheetNames]; skipped.length=0; }   // mọi sheet đều ẩn: vẫn đọc
+  if(!READ_ALL_SHEETS){ names.slice(1).forEach(n=>skipped.push(`${n} (chỉ đọc sheet đầu tiên)`)); names=names.slice(0,1); }
+
+  let sheets=[];
+  names.forEach(name=>{
     const parsed=parseSheet(workbook.Sheets[name]);
-    if(!parsed) continue;
-    sheetCount++;
-    const used=new Map();
+    if(parsed) sheets.push({name,parsed}); else skipped.push(`${name} (trống)`);
+  });
+  if(!sheets.length) throw new Error("Không có sheet nào chứa dữ liệu.");
+
+  const withBarcode=sheets.filter(s=>barcodeIndexOf(s.parsed.headers)!==-1);
+  if(withBarcode.length && withBarcode.length<sheets.length){
+    sheets.filter(s=>!withBarcode.includes(s)).forEach(s=>skipped.push(`${s.name} (không có cột mã vạch)`));
+    sheets=withBarcode;
+  }
+
+  const headers=[], keyIndex=new Map(), rawRows=[], meta=[];
+  for (const {name,parsed} of sheets) {
+    const bc=barcodeIndexOf(parsed.headers);
+    const seen=new Map();
     const colMap=parsed.headers.map((h,i)=>{
       const isEmpty=h.startsWith("Tiêu đề trống");
-      let key=isEmpty?`__empty${i}`:(normalizeHeader(h)||`__raw${h}`);
-      const n=(used.get(key)||0)+1; used.set(key,n);
+      let key=i===bc?"__barcode":(isEmpty?`__empty${i}`:(normalizeHeader(h)||`__raw${h}`));
+      const n=(seen.get(key)||0)+1; seen.set(key,n);
       if(n>1) key+=`#${n}`;             // hai cột trùng tên trong cùng sheet vẫn là hai cột riêng
       if(!keyIndex.has(key)){keyIndex.set(key,headers.length);headers.push(h);}
       return keyIndex.get(key);
@@ -356,7 +405,7 @@ async function readExcel(file) {
       meta.push({sheet:name,line:parsed.lines[k]});
     });
   }
-  if(!sheetCount) throw new Error("Không có sheet nào chứa dữ liệu.");
+  const sheetCount=sheets.length;
   const addSheetCol=sheetCount>1;
   if(addSheetCol) headers.push("Tên sheet");
   const width=headers.length;
@@ -365,7 +414,7 @@ async function readExcel(file) {
     if(addSheetCol) out[width-1]=meta[k].sheet;
     return out;
   });
-  return {headers,rows,meta,sheetCount};
+  return {headers,rows,meta,sheetCount,skipped};
 }
 async function fingerprint(file) {
   const buffer=await file.arrayBuffer();
@@ -393,10 +442,10 @@ async function addFiles(files) {
       const keep=window.confirm(`File "${file.name}" có nội dung giống file "${duplicate.file.name}".\n\nOK: vẫn giữ file này như một nguồn riêng.\nCancel: bỏ qua file trùng.`);
       if(!keep)continue;
     }
-    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],rowMeta:[],sheetCount:0,products:[],barcodeIndex:-1,errors:[]};
+    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],rowMeta:[],sheetCount:0,skippedSheets:[],products:[],barcodeIndex:-1,errors:[]};
     dataSources.push(source);renderSources();
     try{
-      const parsed=await readExcel(file);source.headers=parsed.headers;source.rows=parsed.rows;source.rowMeta=parsed.meta;source.sheetCount=parsed.sheetCount;
+      const parsed=await readExcel(file);source.headers=parsed.headers;source.rows=parsed.rows;source.rowMeta=parsed.meta;source.sheetCount=parsed.sheetCount;source.skippedSheets=parsed.skipped||[];
       if(!source.headers.length) throw new Error("File không có tiêu đề cột.");
       const index=detectBarcodeColumn(source.headers);
       if(index===-1){source.status="pending";renderSources();showColumnPicker(source);setStatus(fileStatus,`Cần chọn cột mã vạch cho "${source.file.name}".`,"error");}
