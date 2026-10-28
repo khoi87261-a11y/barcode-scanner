@@ -49,6 +49,8 @@ input[type=text]:focus,select:focus{outline:3px solid #bfdbfe;border-color:var(-
 .filename{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere;margin-top:2px}
 .pill{display:inline-flex;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;background:#e2e8f0;color:#334155;margin-top:8px}
 .pill.good{background:#dcfce7;color:#166534}.pill.good::before{content:"✓"}.pill.warn{background:#fef3c7;color:#92400e}.pill.warn::before{content:"!"}.pill.bad{background:#fee2e2;color:#991b1b}.pill.bad::before{content:"✕"}
+body.restoring .file-label{opacity:.5;pointer-events:none}
+.meta-line.save-ok{color:#166534}.meta-line.save-bad{color:#b45309;font-weight:700}
 .meta-line{font-size:12.5px;color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
 .source .status{margin-top:10px;font-size:13px}
 .source-options{margin-top:10px;border-top:1px dashed #cbd5e1;padding-top:2px}
@@ -110,6 +112,12 @@ body:not(.has-data) #searchCard{display:none}
 .all-fields{margin-top:6px;border-top:1px solid var(--line)}
 .all-fields summary{cursor:pointer;font-weight:700;min-height:46px;display:flex;align-items:center}
 .pc-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.dup-rows{margin-top:10px;border:1px solid #fcd34d;background:#fffbeb;border-radius:12px;padding:0 12px}
+.dup-rows>summary{cursor:pointer;min-height:46px;display:flex;align-items:center;font-weight:700;font-size:13.5px;color:#92400e}
+.dup-item{padding:9px 0;border-top:1px dashed #fcd34d;font-size:13px;color:#78350f;overflow-wrap:anywhere}
+.result-note{grid-column:1/-1;padding:10px 12px;border-radius:12px;background:#fffbeb;color:#92400e;border-left:4px solid var(--amber);font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.result-note::before{content:"⚠ "}
+.opt-actions{display:flex;gap:8px;margin:10px 0 0}.opt-actions button{flex:1}
 .chip{font-size:12px;background:#eef2f7;color:#475569;border-radius:999px;padding:4px 10px;overflow-wrap:anywhere}
 .empty{padding:18px;border:1px dashed #cbd5e1;border-radius:12px;color:var(--muted);text-align:center}
 footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
@@ -133,11 +141,12 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
   <section class="card" id="dataCard">
     <div class="card-head">
       <span class="icon-tile" aria-hidden="true">📁</span>
-      <div><h2>Dữ liệu Excel</h2><p>Tối đa 5 file · định dạng .xlsx, .xls · xử lý ngay trên máy, không tải lên máy chủ</p></div>
+      <div><h2>Dữ liệu Excel</h2><p>Tối đa 5 file · .xlsx, .xls, .csv · lưu ngay trên thiết bị, không tải lên máy chủ</p></div>
     </div>
     <label class="file-label" id="fileLabel" for="fileInput">📁 Chọn file Excel</label>
-    <input id="fileInput" type="file" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>
+    <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>
     <div id="fileStatus" class="status" aria-live="polite"></div>
+    <div id="storeStatus" class="status" aria-live="polite"></div>
     <div id="sourceList" class="source-list" hidden></div>
     <div id="columnPicker" class="source state-pending picker-card" style="margin-top:12px" hidden>
       <h3>Cần chọn cột mã vạch</h3>
@@ -145,6 +154,7 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
       <select id="barcodeColumn" aria-label="Cột chứa mã vạch"></select>
       <div class="row"><button id="confirmColumn" class="primary">Xác nhận cột</button></div>
     </div>
+    <button id="clearAllButton" class="light btn-sm" type="button" style="margin-top:12px;width:100%" hidden>Xóa tất cả file đã lưu</button>
   </section>
 
   <section class="card" id="searchCard">
@@ -182,7 +192,7 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
     <div id="resultFields" class="results"></div>
   </section>
 </main>
-<footer>Barcode Scanner · Mỗi file là một nguồn riêng · Dữ liệu chỉ xử lý trong trình duyệt</footer>
+<footer>Barcode Scanner · Mỗi file là một nguồn riêng · Dữ liệu chỉ xử lý trong trình duyệt<div id="storageNote" style="margin-top:6px"></div></footer>
 
 <script>
 (() => {
@@ -201,6 +211,208 @@ let pendingStart = null;    // lời hứa của lần mở camera đang chạy
 const READ_ALL_SHEETS = true;      // mặc định chọn mọi sheet có cột mã vạch; false = mặc định chỉ chọn sheet đầu tiên
 const SKIP_HIDDEN_SHEETS = true;   // mặc định không chọn sheet đang ẩn (thường là dữ liệu cũ)
 const GTIN_LOOSE_MATCH = true;     // so khớp EAN/UPC dạng 8-14 số theo chuẩn 14 số (khác nhau số 0 đầu vẫn khớp)
+
+// ===================== LƯU TRỮ BỀN VỮNG (IndexedDB) =====================
+// Hai kho: "files" (nội dung file gốc, ArrayBuffer) và "sources" (cấu hình nhẹ: nhãn, thứ tự, sheet, cột...).
+// Tách đôi để đổi cấu hình không phải ghi lại cả file. Mọi thao tác DB chạy lần lượt qua dbEnqueue().
+const DB_NAME = "barcode-lookup-db", DB_VERSION = 1, SCHEMA_VERSION = 1;
+const STORE_FILES = "files", STORE_SOURCES = "sources";
+let dbPromise = null, dbQueue = Promise.resolve(), restoring = false, persistState = "unknown";
+
+function describeDbError(error) {
+  const n = error?.name || "";
+  if (n === "QuotaExceededError") return "Hết dung lượng lưu trữ của trình duyệt. Hãy xóa bớt file hoặc giải phóng bộ nhớ thiết bị.";
+  if (n === "SecurityError" || n === "InvalidStateError") return "Trình duyệt đang chặn lưu trữ (chế độ riêng tư hoặc đã tắt dữ liệu trang web).";
+  return error?.message || String(error);
+}
+function openDatabase() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error("Trình duyệt này không hỗ trợ IndexedDB.")); return; }
+    let req;
+    try { req = indexedDB.open(DB_NAME, DB_VERSION); } catch (error) { reject(error); return; }
+    req.onupgradeneeded = e => {
+      const db = req.result;
+      if (e.oldVersion < 1) {
+        db.createObjectStore(STORE_FILES, { keyPath: "id" });
+        db.createObjectStore(STORE_SOURCES, { keyPath: "id" }).createIndex("order", "order");
+      }
+      // Phiên bản sau: thêm khối "if (e.oldVersion < 2) { ... }" tại đây, KHÔNG xóa kho cũ.
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      db.onversionchange = () => { db.close(); dbPromise = null; };   // nhường cho tab mở bản mới hơn
+      resolve(db);
+    };
+    req.onerror = () => reject(req.error || new Error("Không mở được cơ sở dữ liệu."));
+    req.onblocked = () => console.warn("Cơ sở dữ liệu đang bị tab khác giữ, chờ tab đó đóng.");
+  }).catch(error => { dbPromise = null; throw error; });
+  return dbPromise;
+}
+// Chạy một giao dịch; chỉ resolve SAU KHI giao dịch hoàn tất (oncomplete), nên "đã lưu" luôn là thật.
+function idbTx(stores, mode, work) {
+  return openDatabase().then(db => new Promise((resolve, reject) => {
+    let tx;
+    try { tx = db.transaction(stores, mode); } catch (error) { reject(error); return; }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("Giao dịch lưu trữ bị hủy."));
+    try { work(tx); } catch (error) { try { tx.abort(); } catch (e) {} reject(error); }
+  }));
+}
+function dbEnqueue(task) {            // tuần tự hóa: lưu, xóa, khôi phục không bao giờ chạy chồng nhau
+  const run = dbQueue.then(task);
+  dbQueue = run.catch(() => {});
+  return run;
+}
+function persistable(source) { return !!source.sheets && source.sheets.length > 0; }   // file đã đọc được
+function sourceRecord(source) {
+  const rank = Math.max(0, dataSources.filter(persistable).indexOf(source));          // thứ tự trong số file lưu được
+  const dc = Array.isArray(source.displayColumns) ? source.displayColumns : source.headers.map((_, i) => i);
+  return {
+    id: source.id, schema: SCHEMA_VERSION, order: rank, role: rank === 0 ? "main" : "extra",
+    name: source.file.name, label: source.label, fingerprint: source.fingerprint,
+    selectedSheets: [...source.selectedSheets],
+    barcodeName: source.barcodeIndex >= 0 ? (source.headers[source.barcodeIndex] ?? null) : null,
+    hiddenColumns: source.headers.filter((_, i) => !dc.includes(i)),
+    savedAt: Date.now()
+  };
+}
+function saveFileToDB(source) {       // nội dung file gốc + cấu hình, trong MỘT giao dịch
+  return dbEnqueue(async () => {
+    if (!dataSources.includes(source)) return;
+    const buffer = await source.file.arrayBuffer();
+    const rec = { id: source.id, schema: SCHEMA_VERSION, name: source.file.name, type: source.file.type || "", size: source.file.size, lastModified: source.file.lastModified || Date.now(), buffer };
+    await idbTx([STORE_FILES, STORE_SOURCES], "readwrite", tx => {
+      tx.objectStore(STORE_FILES).put(rec);
+      tx.objectStore(STORE_SOURCES).put(sourceRecord(source));
+    });
+  });
+}
+function saveSourceConfig(source) {   // chỉ cấu hình (nhẹ), dùng khi đổi nhãn/sheet/cột
+  return dbEnqueue(async () => {
+    if (!dataSources.includes(source)) return;
+    await idbTx([STORE_SOURCES], "readwrite", tx => { tx.objectStore(STORE_SOURCES).put(sourceRecord(source)); });
+  });
+}
+function getSavedFiles() {
+  return dbEnqueue(async () => {
+    let sources = [], files = [];
+    await idbTx([STORE_FILES, STORE_SOURCES], "readonly", tx => {
+      tx.objectStore(STORE_SOURCES).getAll().onsuccess = e => { sources = e.target.result; };
+      tx.objectStore(STORE_FILES).getAll().onsuccess = e => { files = e.target.result; };
+    });
+    const byId = new Map(files.map(f => [f.id, f]));
+    return sources.sort((a, b) => a.order - b.order).map(cfg => ({ cfg, file: byId.get(cfg.id) }));
+  });
+}
+function deleteSavedFile(id) {        // xóa một file và đánh lại thứ tự/vai trò các file còn lại
+  return dbEnqueue(() => idbTx([STORE_FILES, STORE_SOURCES], "readwrite", tx => {
+    tx.objectStore(STORE_FILES).delete(id);
+    tx.objectStore(STORE_SOURCES).delete(id);
+    dataSources.filter(s => s.blobSaved && persistable(s)).forEach(s => tx.objectStore(STORE_SOURCES).put(sourceRecord(s)));
+  }));
+}
+function clearSavedData() {
+  return dbEnqueue(() => idbTx([STORE_FILES, STORE_SOURCES], "readwrite", tx => {
+    tx.objectStore(STORE_FILES).clear(); tx.objectStore(STORE_SOURCES).clear();
+  }));
+}
+function flashStoreStatus(message, type = "", ms = 4500) {   // thông báo tự tắt, tránh làm rối giao diện
+  const el = $("storeStatus"); setStatus(el, message, type);
+  if (message && type !== "error") setTimeout(() => { if (el.textContent === message) setStatus(el, ""); }, ms);
+}
+async function requestPersistence() {
+  try {
+    if (!navigator.storage?.persist) persistState = "unsupported";
+    else if (await navigator.storage.persisted()) persistState = "granted";
+    else persistState = (await navigator.storage.persist()) ? "granted" : "denied";
+  } catch (error) { persistState = "unsupported"; }
+  updateStorageNote();
+}
+async function updateStorageNote() {
+  const el = $("storageNote"); if (!el) return;
+  if (!dataSources.some(s => s.blobSaved)) { el.textContent = ""; return; }
+  let usage = "";
+  try { const est = await navigator.storage?.estimate?.(); if (est?.usage != null) usage = ` Đã dùng khoảng ${(est.usage / 1048576).toFixed(1)} MB.`; } catch (error) {}
+  el.textContent = (persistState === "granted" ? "Dữ liệu được lưu bền vững trên thiết bị này." : "Dữ liệu được lưu trên thiết bị này; trình duyệt có thể xóa khi thiếu dung lượng nên hãy giữ lại file Excel gốc.") + usage;
+}
+// Lưu có trễ ngắn để gom nhiều thao tác đổi cấu hình liên tiếp; file mới thì lưu ngay.
+function scheduleSave(source, immediate = false) {
+  if (restoring || !persistable(source)) return;
+  clearTimeout(source.saveTimer);
+  source.savePending = true;
+  source.saveTimer = setTimeout(() => persistSource(source), immediate ? 0 : 350);
+}
+async function persistSource(source) {
+  source.savePending = false;
+  if (!dataSources.includes(source)) return;
+  const first = !source.blobSaved, hadFailed = source.saveState === "failed";
+  try {
+    if (first) { source.saveState = "saving"; renderSources(); flashStoreStatus(`Đang lưu “${source.label}” vào thiết bị…`); await saveFileToDB(source); source.blobSaved = true; }
+    else await saveSourceConfig(source);
+    if (!dataSources.includes(source)) return;
+    source.saveState = "saved"; source.saveError = "";
+    if (first) { renderSources(); flashStoreStatus(`Đã lưu “${source.label}” trên thiết bị.`, "success"); requestPersistence(); }
+    else if (hadFailed) { renderSources(); flashStoreStatus("Đã lưu lại thành công.", "success"); }
+  } catch (error) {
+    source.saveState = "failed"; source.saveError = describeDbError(error);
+    setStatus($("storeStatus"), `Không thể lưu “${source.label}”: ${source.saveError} File vẫn dùng được trong phiên này nhưng sẽ mất khi tải lại trang.`, "error");
+    renderSources();
+  }
+}
+function flushPendingSaves() { dataSources.forEach(s => { if (s.savePending) { clearTimeout(s.saveTimer); persistSource(s); } }); }
+function makeFileFromRecord(rec) {
+  try { return new File([rec.buffer], rec.name, { type: rec.type || "", lastModified: rec.lastModified }); }
+  catch (error) { const b = new Blob([rec.buffer], { type: rec.type || "" }); b.name = rec.name; b.lastModified = rec.lastModified; return b; }
+}
+// Khôi phục khi mở web: đọc lại file gốc đã lưu bằng chính logic đọc hiện có, áp lại cấu hình đã chọn.
+async function restoreSavedFiles() {
+  restoring = true; document.body.classList.add("restoring"); fileInput.disabled = true;
+  updateSearchAvailability();
+  setStatus($("storeStatus"), "Đang khôi phục dữ liệu đã lưu…");
+  const finish = () => { restoring = false; document.body.classList.remove("restoring"); fileInput.disabled = false; renderSources(); setFileStatus(); };
+  let saved;
+  try { saved = await getSavedFiles(); }
+  catch (error) {
+    finish();
+    setStatus($("storeStatus"), `Không thể khôi phục dữ liệu đã lưu: ${describeDbError(error)} Bạn vẫn có thể tải file để dùng trong phiên này (dữ liệu sẽ không được lưu lại).`, "error");
+    return;
+  }
+  if (!saved.length) { finish(); flashStoreStatus("Chưa có file dữ liệu đã lưu.", "", 3000); return; }
+  const problems = []; let restored = 0;
+  for (const { cfg, file } of saved) {
+    const title = cfg.label || cfg.name;
+    if (!file || !file.buffer || (cfg.schema || 1) > SCHEMA_VERSION) { problems.push(`${title}: ${!file ? "thiếu nội dung file đã lưu" : "được lưu bởi phiên bản mới hơn"}`); continue; }
+    const f = makeFileFromRecord(file);
+    const source = { id: cfg.id, file: f, label: cfg.label || cfg.name.replace(/\.(xlsx|xls|csv)$/i, ""), fingerprint: cfg.fingerprint, status: "reading", headers: [], rows: [], rowMeta: [], sheetCount: 0, sheets: [], selectedSheets: [], index: new Map(), products: [], barcodeIndex: -1, errors: [], blobSaved: true, saveState: "saved" };
+    dataSources.push(source); renderSources();
+    try {
+      source.sheets = await readWorkbook(f);
+      const usable = new Set(source.sheets.filter(sh => sh.parsed).map(sh => sh.name));
+      const chosen = (cfg.selectedSheets || []).filter(n => usable.has(n));
+      source.selectedSheets = chosen.length ? source.sheets.map(sh => sh.name).filter(n => chosen.includes(n)) : defaultSheetSelection(source.sheets);
+      const merged = mergeSheets(source.sheets, source.selectedSheets);
+      source.headers = merged.headers; source.rows = merged.rows; source.rowMeta = merged.meta; source.sheetCount = merged.sheetCount;
+      const hidden = new Set(cfg.hiddenColumns || []);
+      source.displayColumns = source.headers.map((_, i) => i).filter(i => !hidden.has(source.headers[i]));
+      if (!source.headers.length) throw new Error("File không có tiêu đề cột.");
+      let idx = cfg.barcodeName ? source.headers.indexOf(cfg.barcodeName) : -1;
+      if (idx === -1) idx = detectBarcodeColumn(source.headers);
+      if (idx === -1) { source.status = "pending"; renderSources(); showColumnPicker(source); }
+      else finalizeSource(source, idx);
+      restored++;
+    } catch (error) {
+      source.status = "error"; source.errors = [error.message || "Không đọc lại được file đã lưu."]; source.products = [];
+      problems.push(`${title}: ${error.message || "không đọc lại được"}`);
+    }
+  }
+  finish();
+  if (problems.length) setStatus($("storeStatus"), `Đã khôi phục ${restored}/${saved.length} file. Không khôi phục được: ${problems.join("; ")}. Hãy tải lại file bị lỗi.`, "error");
+  else flashStoreStatus(`Đã khôi phục ${restored} file đã lưu.`, "success");
+  if (dataSources.some(s => s.status === "ready")) setStatus(scanStatus, "Dữ liệu đã được khôi phục. Bạn có thể nhập mã hoặc bật camera.", "success");
+  requestPersistence();
+}
 
 function setStatus(el, message, type="") { el.textContent = message; el.className = "status" + (type ? " " + type : ""); }
 function normalizeHeader(value) {
@@ -274,7 +486,7 @@ function validateRows(columns, rows, index, meta=[]) {
   return {errors,products};
 }
 function updateSearchAvailability() {
-  const ready = dataSources.some(s=>s.status==="ready" && s.products.length);
+  const ready = !restoring && dataSources.some(s=>s.status==="ready" && s.products.length);   // chưa quét khi đang khôi phục
   $("searchButton").disabled = !ready;
   updateUiState(ready);
   syncCameraUI();
@@ -284,7 +496,8 @@ function updateUiState(ready) {
   document.body.classList.toggle("has-data", !!ready);
   document.body.classList.toggle("has-files", dataSources.length > 0);
   const label = $("fileLabel");
-  if (label) label.textContent = dataSources.length ? "＋ Thêm file Excel" : "📁 Chọn file Excel";
+  if (label) label.textContent = dataSources.length ? "＋ Thêm file" : "📁 Chọn file Excel / CSV";
+  const clearAll = $("clearAllButton"); if (clearAll) clearAll.hidden = !dataSources.length;
 }
 function renderSources() {
   sourceList.replaceChildren();
@@ -301,10 +514,15 @@ function renderSources() {
     const pill=document.createElement("span"); pill.className="pill "+(source.status==="ready"?"good":source.status==="error"?"bad":"warn"); pill.textContent=source.status==="ready"?`Hợp lệ · ${source.products.length} dòng${source.sheetCount>1?` · ${source.sheetCount} sheet`:""}`:source.status==="error"?"Có lỗi":source.status==="pending"?"Cần chọn cột mã vạch":"Đang đọc…";
     info.append(role,title,filename,pill);
     if(source.status==="ready"){const meta=document.createElement("div"); meta.className="meta-line"; meta.textContent=`${source.headers.length} cột · Cột mã vạch: ${source.headers[source.barcodeIndex]}`; info.append(meta);}
+    if(source.saveState){const sv=document.createElement("div");sv.className="meta-line "+(source.saveState==="failed"?"save-bad":source.saveState==="saved"?"save-ok":"");sv.textContent=source.saveState==="saving"?"Đang lưu vào thiết bị…":source.saveState==="saved"?"💾 Đã lưu trên thiết bị":`⚠ Chưa lưu được: ${source.saveError||"lỗi lưu trữ"}`;info.append(sv);}
     const unused=(source.sheets||[]).filter(sh=>sh.parsed&&!source.selectedSheets.includes(sh.name)).map(sh=>sh.name);
     if(unused.length){const sk=document.createElement("div");sk.className="meta-line";sk.textContent="Không dùng sheet: "+unused.join("; ");info.append(sk);}
     const remove=document.createElement("button"); remove.className="light btn-sm"; remove.type="button"; remove.textContent="Xóa"; remove.setAttribute("aria-label","Xóa file "+source.file.name);
-    remove.addEventListener("click",()=>{dataSources=dataSources.filter(s=>s.id!==source.id); if(pendingColumnSourceId===source.id){pendingColumnSourceId=null;$("columnPicker").hidden=true;} renderSources(); updateSearchAvailability(); setFileStatus();});
+    remove.addEventListener("click",()=>{
+      clearTimeout(source.saveTimer); source.savePending=false;
+      dataSources=dataSources.filter(s=>s.id!==source.id); if(pendingColumnSourceId===source.id){pendingColumnSourceId=null;$("columnPicker").hidden=true;} renderSources(); updateSearchAvailability(); setFileStatus();
+      if(source.blobSaved||source.saveState==="saving") deleteSavedFile(source.id).then(updateStorageNote).catch(error=>setStatus($("storeStatus"),`Không xóa được dữ liệu đã lưu của “${source.label}”: ${describeDbError(error)}`,"error"));
+    });
     top.append(info,remove); card.append(top);
     if(source.status==="error" && source.errors?.length){
       const err=document.createElement("div"); err.className="status error"; err.textContent=source.errors.slice(0,8).join("\n")+(source.errors.length>8?`\n… còn ${source.errors.length-8} lỗi.`:""); card.append(err);
@@ -320,7 +538,7 @@ function renderSources() {
     const g1=document.createElement("div"); g1.className="opt-group";
     const label=document.createElement("label"); label.className="opt-title"; label.textContent="Tên nguồn dữ liệu";
     const input=document.createElement("input"); input.type="text"; input.value=source.label; input.maxLength=80; input.setAttribute("aria-label","Nhãn nguồn "+source.file.name);
-    input.addEventListener("change",()=>{source.label=input.value.trim()||source.file.name; renderSources();});
+    input.addEventListener("change",()=>{source.label=input.value.trim()||source.file.name; scheduleSave(source); renderSources();});
     g1.append(label,input); opts.append(g1);
 
     // Chọn sheet sử dụng: có ở MỌI file (file tổng và file kèm theo).
@@ -365,14 +583,21 @@ function renderSources() {
     dSum.addEventListener("click",()=>{source.displayOpen=!dWrap.open;});
     const dHelp=document.createElement("p"); dHelp.textContent="Bỏ chọn cột không cần xem. Dữ liệu gốc trong Excel không bị xóa.";
     const dGrid=document.createElement("div"); dGrid.className="display-grid";
+    const updateDisplayCount=()=>{dSum.textContent=`Thông tin hiển thị khi tra cứu (${source.displayColumns.length}/${source.headers.length} cột)`;};
+    const dBar=document.createElement("div"); dBar.className="opt-actions";
+    [["Chọn tất cả",true],["Bỏ chọn tất cả",false]].forEach(([text,all])=>{
+      const btn=document.createElement("button"); btn.type="button"; btn.className="light btn-sm"; btn.textContent=text;
+      btn.addEventListener("click",()=>{source.displayColumns=all?source.headers.map((_,i)=>i):[]; dGrid.querySelectorAll("input").forEach(c=>{c.checked=all;}); updateDisplayCount(); scheduleSave(source);});
+      dBar.append(btn);
+    });
     source.headers.forEach((header,i)=>{
       const optionLabel=document.createElement("label"); optionLabel.className="display-option";
       const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=source.displayColumns.includes(i);
-      cb.addEventListener("change",()=>{source.displayColumns=cb.checked?[...new Set([...source.displayColumns,i])]:source.displayColumns.filter(n=>n!==i); dSum.textContent=`Thông tin hiển thị khi tra cứu (${source.displayColumns.length}/${source.headers.length} cột)`;});
+      cb.addEventListener("change",()=>{source.displayColumns=cb.checked?[...new Set([...source.displayColumns,i])]:source.displayColumns.filter(n=>n!==i); updateDisplayCount(); scheduleSave(source);});
       const span=document.createElement("span"); span.textContent=header||`Tiêu đề trống (cột ${i+1})`;
       optionLabel.append(cb,span); dGrid.append(optionLabel);
     });
-    dWrap.append(dSum,dHelp,dGrid); g4.append(dWrap); opts.append(g4);
+    dWrap.append(dSum,dHelp,dBar,dGrid); g4.append(dWrap); opts.append(g4);
 
     card.append(opts); sourceList.append(card);
   });
@@ -400,6 +625,7 @@ function finalizeSource(source,index) {
   renderSources();setFileStatus();
   if(source.status==="error") setStatus(scanStatus,`File "${source.label}" chưa được dùng vì có lỗi dữ liệu. Xem thông báo trong thẻ file.`, "error");
   else setStatus(scanStatus,"Dữ liệu đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.","success");
+  scheduleSave(source);
 }
 
 // Số dài ở định dạng General bị SheetJS hiển thị dạng "8.05178E+12" -> lấy lại giá trị thật để không mất mã vạch.
@@ -457,11 +683,38 @@ function parseSheet(sheet) {
   return {headers,rows,lines};
 }
 
+// CSV: tự phân tích để mọi ô giữ nguyên dạng chuỗi (không mất số 0 đầu, không thành ký pháp khoa học).
+function decodeCsv(buffer){
+  try{return new TextDecoder("utf-8",{fatal:true}).decode(buffer);}
+  catch(e){try{return new TextDecoder("windows-1258").decode(buffer);}catch(e2){return new TextDecoder().decode(buffer);}}
+}
+function parseCsvText(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  const head=text.split(/\r?\n/,1)[0]||"";
+  const cnt=d=>head.split(d).length-1;
+  const delim=[",",";","\t"].sort((a,b)=>cnt(b)-cnt(a))[0];
+  const rows=[];let row=[],cur="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===delim){row.push(cur);cur="";}
+    else if(c==="\n"||c==="\r"){ if(c==="\r"&&text[i+1]==="\n") i++; row.push(cur);cur="";rows.push(row);row=[]; }
+    else cur+=c;
+  }
+  if(cur!==""||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+function csvToWorkbook(buffer){
+  const table=parseCsvText(decodeCsv(buffer));
+  if(!table.length) throw new Error("File CSV trống.");
+  return {SheetNames:["CSV"],Sheets:{CSV:XLSX.utils.aoa_to_sheet(table)},Workbook:{Sheets:[{Hidden:0}]}};
+}
 // Đọc file và giữ dữ liệu TỪNG sheet (chưa gộp) để người dùng chọn sheet sử dụng.
 async function readWorkbook(file) {
   if(!window.XLSX) throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
   const buffer=await file.arrayBuffer();
-  const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
+  const workbook=/\.csv$/i.test(file.name)?csvToWorkbook(buffer):XLSX.read(buffer,{type:"array",cellDates:false});
   if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
   const sheetMeta=workbook.Workbook?.Sheets||[];
   const sheets=workbook.SheetNames.map((name,idx)=>{
@@ -529,6 +782,7 @@ function rebuildSource(source) {
     source.status="pending";source.products=[];source.index=new Map();source.errors=[];
     renderSources();showColumnPicker(source);setFileStatus();
     setStatus(scanStatus,`Cần chọn lại cột mã vạch cho "${source.label}".`,"error");
+    scheduleSave(source);
   } else finalizeSource(source,idx);
 }
 function toggleSheet(source,name,checked) {
@@ -551,11 +805,12 @@ async function fingerprint(file) {
 async function addFiles(files) {
   const chosen=[...files];
   if(!chosen.length)return;
+  if(restoring){setStatus(fileStatus,"Đang khôi phục dữ liệu đã lưu, vui lòng đợi rồi chọn file.","error");fileInput.value="";return;}
   if(dataSources.length+chosen.length>5){setStatus(fileStatus,`Bạn đang có ${dataSources.length} file. Chỉ được thêm tối đa 5 file; hãy chọn ${Math.max(0,5-dataSources.length)} file nữa hoặc xóa bớt file hiện có.`,"error");fileInput.value="";return;}
   const notes=[];   // thông báo từ chối file: giữ lại đến cuối để không bị dòng trạng thái chung ghi đè
   for(const file of chosen){
     const ext=file.name.split(".").pop().toLowerCase();
-    if(!["xlsx","xls"].includes(ext)){notes.push(`"${file.name}" không phải file Excel .xlsx hoặc .xls.`);continue;}
+    if(!["xlsx","xls","csv"].includes(ext)){notes.push(`"${file.name}" không phải file Excel .xlsx, .xls hoặc .csv.`);continue;}
     setStatus(fileStatus,`Đang kiểm tra file ${file.name}…`);
     let hash;
     try{hash=await fingerprint(file);}catch(e){notes.push(`Không thể kiểm tra file ${file.name}: ${e.message}`);continue;}
@@ -564,7 +819,7 @@ async function addFiles(files) {
       const keep=window.confirm(`File "${file.name}" có nội dung giống file "${duplicate.file.name}".\n\nOK: vẫn giữ file này như một nguồn riêng.\nCancel: bỏ qua file trùng.`);
       if(!keep)continue;
     }
-    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],rowMeta:[],sheetCount:0,sheets:[],selectedSheets:[],index:new Map(),products:[],barcodeIndex:-1,errors:[]};
+    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls|csv)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],rowMeta:[],sheetCount:0,sheets:[],selectedSheets:[],index:new Map(),products:[],barcodeIndex:-1,errors:[],blobSaved:false,saveState:""};
     dataSources.push(source);renderSources();
     try{
       source.sheets=await readWorkbook(file);source.selectedSheets=defaultSheetSelection(source.sheets);
@@ -573,6 +828,7 @@ async function addFiles(files) {
       const index=detectBarcodeColumn(source.headers);
       if(index===-1){source.status="pending";renderSources();showColumnPicker(source);setStatus(fileStatus,`Cần chọn cột mã vạch cho "${source.file.name}".`,"error");}
       else finalizeSource(source,index);
+      scheduleSave(source,true);      // tự động lưu ngay khi file đọc được (không cần bấm lưu)
     }catch(error){source.status="error";source.errors=[error.message||"Không đọc được file Excel."];source.products=[];renderSources();setFileStatus();}
   }
   fileInput.value="";
@@ -592,13 +848,13 @@ function createField(header,value,priority=false,extra="") {
   const val=document.createElement("div");val.className="field-value";val.textContent=displayValue(value);
   field.append(name,val);return field;
 }
-function renderProductCard(source,product,query) {
+function renderProductCard(source,product,query,others=[]) {
   const card=document.createElement("article");card.className="product-card";
   const isMain=dataSources[0]?.id===source.id;
   card.classList.add(isMain?"is-main":"is-extra");
   const head=document.createElement("div");head.className="pc-head";
   const role=document.createElement("span");role.className="role "+(isMain?"role-main":"role-extra");role.textContent=isMain?"File tổng":"File kèm theo";
-  const src=document.createElement("div");src.className="pc-source";src.textContent=source.label||source.file.name;
+  const src=document.createElement("div");src.className="pc-source";src.textContent=(source.label||source.file.name)+((source.selectedSheets||[]).length>1&&product.sheet?` › ${product.sheet}`:"");
   const ok=document.createElement("span");ok.className="pc-ok";ok.textContent="✓";ok.setAttribute("aria-hidden","true");
   head.append(role,src,ok);card.append(head);
   const visible=Array.isArray(source.displayColumns)?source.displayColumns:source.headers.map((_,i)=>i);
@@ -618,6 +874,23 @@ function renderProductCard(source,product,query) {
   const fields=document.createElement("div");fields.className="field-list";
   source.headers.forEach((header,i)=>{if(visible.includes(i))fields.append(createField(header||`Tiêu đề trống (cột ${i+1})`,product.values[i]));});
   details.append(fields);card.append(details);
+  // Mã còn xuất hiện ở dòng khác trong CÙNG sheet: không tạo thẻ thứ hai, chỉ nêu rõ chúng khác nhau ở đâu.
+  if(others.length){
+    const dup=document.createElement("details");dup.className="dup-rows";
+    const sm=document.createElement("summary");sm.textContent=`Còn ${others.length} dòng khác trùng mã trong sheet này (đang hiển thị dòng ${product.line})`;dup.append(sm);
+    others.forEach(o=>{
+      const diffs=[];
+      source.headers.forEach((h,i)=>{
+        if(!visible.includes(i)) return;
+        const a=displayValue(product.values[i]).trim(), b=displayValue(o.values[i]).trim();
+        if(a!==b) diffs.push(`${h||`Cột ${i+1}`}: ${a||"(trống)"} → ${b||"(trống)"}`);
+      });
+      const item=document.createElement("div");item.className="dup-item";
+      item.textContent=`Dòng ${o.line}: `+(diffs.length?`khác dòng ${product.line} ở ${diffs.join("; ")}`:`giống dòng ${product.line} ở các cột đang hiển thị`);
+      dup.append(item);
+    });
+    card.append(dup);
+  }
   const meta=document.createElement("div");meta.className="pc-meta";
   const chips=[`File: ${source.file.name}`];
   if(product.sheet&&source.sheetCount>1) chips.push(`Sheet: ${product.sheet}`);
@@ -627,6 +900,7 @@ function renderProductCard(source,product,query) {
   card.append(meta);return card;
 }
 function searchBarcode(value) {
+  if (restoring) { setStatus(scanStatus, "Đang khôi phục dữ liệu đã lưu, vui lòng đợi giây lát…", ""); return; }
   const query = barcodeString(value);
   const readySources = dataSources.filter(source =>
     source.status === "ready" && Array.isArray(source.products)
@@ -646,8 +920,18 @@ function searchBarcode(value) {
 
   // Duyệt mọi dòng của mọi file; không dừng khi tìm thấy kết quả đầu tiên.
   const qkey = matchKey(query);
+  const missing = [];                               // sheet đã chọn nhưng không có mã này
   readySources.forEach(source => {
-    (source.index?.get(qkey) || []).forEach(product => matches.push({ source, product }));
+    const bySheet = new Map();
+    (source.index?.get(qkey) || []).forEach(product => {
+      const list = bySheet.get(product.sheet); if (list) list.push(product); else bySheet.set(product.sheet, [product]);
+    });
+    const sheetNames = source.selectedSheets?.length ? source.selectedSheets : [...new Set(source.products.map(p => p.sheet))];
+    sheetNames.forEach(name => {
+      const rows = bySheet.get(name);
+      if (rows) matches.push({ source, product: rows[0], others: rows.slice(1) });   // 1 thẻ cho mỗi sheet
+      else missing.push({ source, sheet: name });
+    });
   });
 
   if (!matches.length) {
@@ -663,17 +947,22 @@ function searchBarcode(value) {
     return;
   }
 
-  matches.forEach(({ source, product }) => {
-    resultFields.append(renderProductCard(source, product, query));
+  matches.forEach(({ source, product, others }) => {
+    resultFields.append(renderProductCard(source, product, query, others));
   });
+  if (missing.length) {
+    const note = document.createElement("div"); note.className = "result-note";
+    note.textContent = "Không có mã này ở: " + missing.map(m => (m.source.label || m.source.file.name) + ((m.source.selectedSheets || []).length > 1 ? ` › Sheet ${m.sheet}` : "")).join("; ") + ".";
+    resultFields.prepend(note);
+  }
 
   const foundIds = new Set(matches.map(match => match.source.id));
   const sourceCount = foundIds.size;
-  const missing = readySources.filter(source => !foundIds.has(source.id)).map(source => source.label || source.file.name);
-  resultSummary.textContent = `Mã vạch ${query} · ${matches.length} bản ghi · có trong ${sourceCount}/${readySources.length} file` + (missing.length ? ` · không có trong: ${missing.join("; ")}` : "") + ".";
+  const dupRows = matches.reduce((n, m) => n + m.others.length, 0);
+  resultSummary.textContent = `Mã vạch ${query} · ${matches.length} kết quả · có trong ${sourceCount}/${readySources.length} file` + (dupRows ? ` · ${dupRows} dòng trùng mã được gom vào thẻ` : "") + ".";
   result.hidden = false;
   setStatus(scanStatus,
-    `Đã tìm thấy ${matches.length} bản ghi từ ${sourceCount} nguồn. Mỗi thẻ hiển thị các cột đã chọn của file tương ứng.`,
+    `Đã tìm thấy ${matches.length} kết quả từ ${sourceCount} nguồn. Mỗi thẻ là một sheet của một file.`,
     "success"
   );
   result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1055,11 +1344,24 @@ $("startCamera").addEventListener("click", startCameraScan);
 $("resumeCamera").addEventListener("click", startCameraScan);
 $("lockFrame").addEventListener("click", freezeCurrentFrame);
 flashButton.addEventListener("click", () => setFlash(!flashOn));
-window.addEventListener("pagehide", () => stopCamera());
+window.addEventListener("pagehide", () => { stopCamera(); flushPendingSaves(); });
 document.addEventListener("visibilitychange", () => {
+  if (document.hidden) flushPendingSaves();
   if (document.hidden && (camState==="live" || camState==="starting"))
     stopCamera("Camera đã dừng vì bạn rời khỏi trang. Bấm “Quét mã” để mở lại.");
 });
+$("clearAllButton").addEventListener("click", async () => {
+  if (!dataSources.length || !window.confirm("Xóa tất cả file đã tải và dữ liệu đã lưu trên thiết bị này?")) return;
+  stopCamera();
+  dataSources.forEach(s => { clearTimeout(s.saveTimer); s.savePending = false; });
+  dataSources = []; pendingColumnSourceId = null; $("columnPicker").hidden = true;
+  result.hidden = true; resultFields.replaceChildren(); barcodeInput.value = "";
+  renderSources(); setFileStatus();
+  try { await clearSavedData(); flashStoreStatus("Đã xóa toàn bộ dữ liệu đã lưu.", "success"); }
+  catch (error) { setStatus($("storeStatus"), `Không xóa được dữ liệu đã lưu: ${describeDbError(error)}`, "error"); }
+  updateStorageNote();
+});
+restoreSavedFiles().catch(error => { restoring = false; document.body.classList.remove("restoring"); fileInput.disabled = false; setStatus($("storeStatus"), `Không thể khôi phục dữ liệu đã lưu: ${describeDbError(error)}`, "error"); });
 })();
 </script>
 </body>
