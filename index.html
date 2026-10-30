@@ -371,7 +371,7 @@ async function updateStorageNote() {
   try { const est = await navigator.storage?.estimate?.(); if (est?.usage != null) usage = ` Đã dùng khoảng ${(est.usage / 1048576).toFixed(1)} MB.`; } catch (error) {}
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
-  let text = (persistState === "granted" ? "Dữ liệu được lưu bền vững trên thiết bị này." : "Dữ liệu được lưu trên thiết bị này; trình duyệt có thể xóa khi thiếu dung lượng nên hãy giữ lại file Excel gốc.") + usage;
+  let text = (persistState === "granted" ? "Dữ liệu được lưu trên thiết bị này." : "Dữ liệu được lưu trên thiết bị này; trình duyệt có thể xóa khi thiếu dung lượng nên hãy giữ lại file Excel gốc.") + usage;
   if (ios && !standalone && persistState !== "granted") text += " Trên iPhone, Safari có thể xóa dữ liệu web nếu bạn không mở trang này trong 7 ngày; hãy thêm trang vào Màn hình chính (Chia sẻ → Thêm vào MH chính) để giữ lâu hơn (bản trên Màn hình chính có bộ nhớ riêng, cần tải file lại một lần).";
   el.textContent = text;
 }
