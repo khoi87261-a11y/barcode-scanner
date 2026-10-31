@@ -157,6 +157,9 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
 .tree-node[aria-expanded]::before{content:"▸";transition:transform .15s}.tree-node[aria-expanded=true]::before{transform:rotate(90deg)}
 .tree-node[aria-current=true]{background:#e8efff;color:var(--blue-d)}
 .guide-content{margin-top:12px;padding:12px;border:1px dashed #cbd5e1;border-radius:12px;color:var(--muted);overflow-wrap:anywhere}
+.guide-content strong{display:block;font-size:16px;color:var(--ink)}
+.guide-content .guide-text{white-space:pre-line;line-height:1.65;margin-top:8px;overflow-wrap:anywhere}
+.guide-content.has-text{border-style:solid;border-color:var(--line);background:#f8fafc;color:var(--ink)}
 .status.warn{background:#fffbeb;color:#92400e;border-color:var(--amber)}.status.warn::before{content:"ℹ "}
 .status.warn button{margin-top:8px}
 @media(min-width:700px){.panel-sheet{left:50%;right:auto;bottom:auto;top:50%;width:min(560px,92vw);border-radius:20px;transform:translate(-50%,-46%)}.panel-root.open .panel-sheet{transform:translate(-50%,-50%)}}
@@ -228,7 +231,7 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
     <div id="resultFields" class="results"></div>
   </section>
 </main>
-<footer>Barcode Scanner · Mỗi file là một nguồn riêng · Dữ liệu chỉ xử lý trong trình duyệt<div id="storageNote" style="margin-top:6px"></div><div id="perfNote" style="margin-top:6px"></div></footer>
+<footer>Barcode Scanner · Contacts: khoi87261@gmail.com<div id="storageNote" style="margin-top:6px"></div><div id="perfNote" style="margin-top:6px"></div></footer>
 
 <div id="panelRoot" class="panel-root" aria-hidden="true">
   <div class="panel-backdrop" data-close="1"></div>
@@ -1602,25 +1605,88 @@ const MENU_ITEMS = [
   { id: "contact", label: "Liên hệ",                       panel: "contact" },
   { id: "donate",  label: "Donate",                        panel: "donate" }
 ];
-// Cây hướng dẫn (dữ liệu thuần): thêm nhánh/lá bằng cách thêm phần tử; gán `content` (chuỗi) khi có nội dung.
+// Cây hướng dẫn (dữ liệu thuần): thêm nhánh/lá bằng cách thêm phần tử; `content` là văn bản, dùng \n để xuống dòng.
 // TODO: Phát triển hệ thống hướng dẫn dạng cây phân cấp.
 const GUIDE_TREE = [{ id: "root", title: "Hướng dẫn sử dụng", children: [
-  { id: "intro",  title: "Giới thiệu ứng dụng" },
-  { id: "upload", title: "Tải dữ liệu Excel" },
-  { id: "manage", title: "Quản lý nguồn dữ liệu" },
-  { id: "search", title: "Tra cứu barcode" },
-  { id: "camera", title: "Quét barcode bằng camera" },
-  { id: "errors", title: "Xử lý lỗi thường gặp" }
+  { id: "intro", title: "Giới thiệu ứng dụng", content:
+`Ứng dụng giúp bạn tra cứu thông tin sản phẩm bằng mã vạch từ chính file Excel của mình.
+
+Cách dùng nhanh:
+1. Tải file Excel lên một lần.
+2. Nhập mã vạch hoặc quét bằng camera.
+3. Xem kết quả ngay.
+
+• Tối đa 5 file Excel (.xlsx, .xls).
+• Dữ liệu chỉ xử lý và lưu trên điện thoại của bạn, không gửi lên máy chủ.
+• Lần sau mở lại web, dữ liệu tự khôi phục, không cần tải lại file.` },
+  { id: "upload", title: "Tải dữ liệu Excel", content:
+`1. Bấm “Chọn file Excel” và chọn file .xlsx hoặc .xls (chọn được nhiều file cùng lúc, tối đa 5 file).
+2. Chờ thẻ file hiện “Hợp lệ”.
+3. Ứng dụng tự lưu file vào thiết bị. Khi thẻ ghi “Đã lưu trên thiết bị”, lần sau bạn không cần tải lại.
+
+• File đầu tiên là “File tổng”. Các file sau là “File kèm theo” (ví dụ file chương trình khuyến mãi).
+• File có nhiều sheet: ứng dụng tự chọn sheet có cột mã vạch và bỏ qua sheet đang ẩn.
+• Nếu file có nội dung giống file đã tải, ứng dụng sẽ hỏi bạn có muốn giữ không.
+• Chỉ nhận file .xlsx và .xls.` },
+  { id: "manage", title: "Quản lý nguồn dữ liệu", content:
+`Bấm “Tùy chỉnh nguồn dữ liệu” trong thẻ của từng file để:
+
+• Tên nguồn dữ liệu: đặt tên dễ nhớ, tên này hiện trên kết quả.
+• Sheet sử dụng: tích các sheet muốn tra cứu (khi file có nhiều sheet).
+• Cột chứa mã vạch: ứng dụng tự nhận. Nếu nhận sai hoặc báo “Cần chọn cột mã vạch”, hãy chọn lại cột đúng.
+• Thông tin hiển thị khi tra cứu: tích các cột muốn xem. Dùng “Chọn tất cả” hoặc “Bỏ chọn tất cả” cho nhanh.
+
+Bấm “Xóa” để bỏ một file. Bấm “Xóa tất cả file đã lưu” để xóa toàn bộ dữ liệu trên thiết bị.` },
+  { id: "search", title: "Tra cứu barcode", content:
+`1. Nhập hoặc dán mã vạch vào ô tìm kiếm.
+2. Bấm “Tìm kiếm” (hoặc phím Enter).
+3. Xem kết quả bên dưới.
+
+Cách đọc kết quả:
+• Mỗi thẻ là một sheet của một file, có nhãn “File tổng” hoặc “File kèm theo”, tên nguồn và dòng Excel.
+• Cùng một mã có ở nhiều file thì hiện đủ thẻ của từng file.
+• Mã xuất hiện ở nhiều dòng trong cùng một sheet: bấm “Xem thêm bản ghi” để xem các dòng còn lại.
+• Dòng cảnh báo màu vàng cho biết sheet nào không có mã này.
+
+Bấm “Xóa kết quả” để làm mới.` },
+  { id: "camera", title: "Quét barcode bằng camera", content:
+`1. Bấm “Quét mã” và cho phép dùng camera khi được hỏi.
+2. Đưa mã vạch vào giữa khung 4 góc, giữ máy vững và đủ sáng. Quét được là camera tự dừng và hiện kết quả.
+
+Các nút trên camera:
+• ⚡ Bật/tắt đèn flash (nếu thiết bị hỗ trợ; iPhone/Safari không hỗ trợ).
+• “✕ Dừng”: tắt camera.
+• “🔒 Khóa khung hình”: chụp đứng hình rồi đọc mã từ ảnh. Bấm “▶ Quét tiếp” để quay lại camera.
+
+Mẹo: tránh bóng và chói, giữ khoảng cách vừa đủ để mã rõ nét. Camera không mở được thì bạn vẫn nhập mã bằng tay.` },
+  { id: "errors", title: "Xử lý lỗi thường gặp", content:
+`Không mở được camera
+→ Cho phép camera cho trình duyệt trong Cài đặt và đóng ứng dụng khác đang dùng camera. Nếu đang mở trong Zalo, Facebook hay Messenger, hãy mở liên kết bằng Chrome hoặc Safari. Lúc đó vẫn nhập mã bằng tay được.
+
+Không tìm thấy mã
+→ Kiểm tra mã nhập đã đúng chưa, đã chọn đúng sheet và đúng “Cột chứa mã vạch” chưa. Cũng có thể mã không có trong file.
+
+File báo lỗi “thiếu mã vạch”
+→ Dòng được nêu đang trống mã. Bổ sung mã trong Excel rồi tải lại, hoặc bỏ sheet không dùng ở “Sheet sử dụng”.
+
+Mở lại web mất dữ liệu hoặc báo “Chưa lưu được”
+→ Dữ liệu được lưu riêng theo từng trình duyệt trên từng thiết bị. Xóa dữ liệu trang web, dùng chế độ ẩn danh hoặc hết dung lượng sẽ làm mất dữ liệu. Hãy mở bằng đúng trình duyệt đã tải file và giữ lại file Excel gốc để tải lại khi cần. Trên iPhone, Safari có thể xóa dữ liệu nếu 7 ngày không mở web.
+
+Báo không tải được thư viện
+→ Kiểm tra kết nối mạng rồi bấm “Thử lại” hoặc thao tác lại.` }
 ] }];
 const GUIDE_PLACEHOLDER = "Nội dung hướng dẫn đang được cập nhật";
-function placeholderBlock(text) { const p = document.createElement("p"); p.className = "guide-content"; p.textContent = text; return p; }
+function placeholderBlock(text) { const p = document.createElement("div"); p.className = "guide-content"; p.textContent = text; return p; }
 function renderGuidePanel(body) {
   const content = placeholderBlock(GUIDE_PLACEHOLDER);
-  const show = node => {
+  let firstLeaf = null;
+  const show = (node, scroll) => {
     content.replaceChildren();
+    const has = typeof node.content === "string" && node.content.trim() !== "";
     const h = document.createElement("strong"); h.textContent = node.title;
-    const t = document.createElement("div"); t.style.marginTop = "6px"; t.textContent = (typeof node.content === "string" && node.content) ? node.content : GUIDE_PLACEHOLDER;
-    content.append(h, t);
+    const t = document.createElement("div"); t.className = "guide-text"; t.textContent = has ? node.content : GUIDE_PLACEHOLDER;
+    content.classList.toggle("has-text", has); content.append(h, t);
+    if (scroll) content.scrollIntoView({ block: "nearest" });
   };
   const build = (nodes, level) => {
     const ul = document.createElement("ul");
@@ -1634,7 +1700,8 @@ function renderGuidePanel(body) {
         btn.addEventListener("click", () => { const was = btn.getAttribute("aria-expanded") === "true"; btn.setAttribute("aria-expanded", String(!was)); sub.hidden = was; });
         li.append(btn, sub);
       } else {
-        btn.addEventListener("click", () => { body.querySelectorAll(".tree-node[aria-current]").forEach(n => n.removeAttribute("aria-current")); btn.setAttribute("aria-current", "true"); show(node); });
+        if (!firstLeaf) firstLeaf = { btn, node };
+        btn.addEventListener("click", () => { body.querySelectorAll(".tree-node[aria-current]").forEach(n => n.removeAttribute("aria-current")); btn.setAttribute("aria-current", "true"); show(node, true); });
         li.append(btn);
       }
       ul.append(li);
@@ -1642,6 +1709,7 @@ function renderGuidePanel(body) {
     return ul;
   };
   body.append(build(GUIDE_TREE, 0), content);
+  if (firstLeaf) { firstLeaf.btn.setAttribute("aria-current", "true"); show(firstLeaf.node, false); }   // mở sẵn mục đầu tiên
 }
 const PANELS = {
   guide: { title: "Hướng dẫn", render: renderGuidePanel },
@@ -1656,7 +1724,7 @@ const PANELS = {
   } },
   donate: { title: "Donate", render(body) {
     // TODO: Bổ sung phương thức Donate chính thức.
-    body.append(placeholderBlock("Nội dung đang được cập nhật"));
+    body.append(placeholderBlock("STK: 5839101234; Bank: Techcombank; Tên: PHAM QUANG KHOI"));
   } }
 };
 const menuButton = $("menuButton"), menuList = $("menuList");
