@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#101827">
 <title>Barcode Scanner — Tra cứu sản phẩm</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
 <style>
 :root{color-scheme:light;--ink:#172033;--muted:#64748b;--line:#e2e8f0;--blue:#2563eb;--blue-d:#1d4ed8;--green:#16a34a;--green-d:#15803d;--amber:#d97706;--red:#dc2626;--bg:#111a2e;--tile:#f1f5f9;--r:20px}
 *{box-sizing:border-box}
@@ -130,22 +128,57 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
   body:not(.has-data) main{grid-template-columns:minmax(0,680px);justify-content:center}
   #result{grid-column:1/-1}.results{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 }
-@media(prefers-reduced-motion:no-preference){.product-card,.source{animation:appear .16s ease-out}@keyframes appear{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}}
+@media(prefers-reduced-motion:no-preference){.source{animation:appear .16s ease-out}@keyframes appear{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}}
+
+/* ---- Menu hamburger + panel ---- */
+.app-head{position:relative;z-index:30}.head-text{flex:1;min-width:0}
+.menu-btn{flex:none;width:44px;height:44px;min-height:44px;padding:0;border-radius:12px;background:transparent;color:var(--ink)}
+.menu-btn:hover{background:#eef2f7}
+.bars,.bars::before,.bars::after{display:block;width:20px;height:2px;background:currentColor;border-radius:2px}
+.bars{position:relative}.bars::before,.bars::after{content:"";position:absolute;left:0}.bars::before{top:-6px}.bars::after{top:6px}
+.menu-list{position:absolute;right:0;top:100%;margin-top:6px;width:min(300px,100%);background:#fff;border-radius:16px;padding:6px;box-shadow:0 10px 30px #00000045;opacity:0;transform:translateY(-8px);visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+.menu-list.open{opacity:1;transform:none;visibility:visible;pointer-events:auto;transition-delay:0s}
+.menu-item{width:100%;justify-content:flex-start;text-align:left;min-height:48px;padding:10px 14px;border-radius:12px;background:transparent;color:var(--ink);font-weight:600}
+.menu-item:hover,.menu-item:focus-visible{background:#eef2f7}
+.panel-root{position:fixed;inset:0;z-index:50;visibility:hidden;pointer-events:none}
+.panel-root.open{visibility:visible;pointer-events:auto}
+.panel-backdrop{position:absolute;inset:0;background:#0b1220b3;opacity:0;transition:opacity .18s ease}
+.panel-root.open .panel-backdrop{opacity:1}
+.panel-sheet{position:absolute;left:0;right:0;bottom:0;max-height:88vh;display:flex;flex-direction:column;background:#fff;border-radius:20px 20px 0 0;outline:none;padding-bottom:env(safe-area-inset-bottom);transform:translateY(24px);opacity:0;transition:transform .18s ease,opacity .18s ease}
+.panel-root.open .panel-sheet{transform:none;opacity:1}
+.panel-head{display:flex;align-items:center;gap:8px;padding:16px 16px 8px}.panel-head h2{flex:1;font-size:18px;overflow-wrap:anywhere}
+.panel-close{flex:none;width:44px;height:44px;min-height:44px;padding:0;border-radius:12px;background:#eef2f7;color:var(--ink);font-size:18px}
+.panel-body{padding:8px 16px 20px;overflow:auto;-webkit-overflow-scrolling:touch}
+.no-scroll{overflow:hidden}
+.badge-dev{display:inline-block;padding:6px 12px;border-radius:999px;background:#fef3c7;color:#92400e;font-weight:800;letter-spacing:.04em;margin:4px 0 10px}
+.tree,.tree ul{list-style:none;margin:0;padding:0}.tree ul{margin-left:14px;padding-left:8px;border-left:2px solid var(--line)}
+.tree-node{width:100%;justify-content:flex-start;text-align:left;min-height:44px;padding:8px 10px;border-radius:10px;background:transparent;color:var(--ink);font-weight:600;font-size:15px}
+.tree-node::before{content:"•";flex:none;width:16px;color:var(--muted)}
+.tree-node[aria-expanded]::before{content:"▸";transition:transform .15s}.tree-node[aria-expanded=true]::before{transform:rotate(90deg)}
+.tree-node[aria-current=true]{background:#e8efff;color:var(--blue-d)}
+.guide-content{margin-top:12px;padding:12px;border:1px dashed #cbd5e1;border-radius:12px;color:var(--muted);overflow-wrap:anywhere}
+.status.warn{background:#fffbeb;color:#92400e;border-color:var(--amber)}.status.warn::before{content:"ℹ "}
+.status.warn button{margin-top:8px}
+@media(min-width:700px){.panel-sheet{left:50%;right:auto;bottom:auto;top:50%;width:min(560px,92vw);border-radius:20px;transform:translate(-50%,-46%)}.panel-root.open .panel-sheet{transform:translate(-50%,-50%)}}
+@media(prefers-reduced-motion:reduce){.menu-list,.panel-backdrop,.panel-sheet,.tree-node::before{transition:none!important}}
 </style>
 </head>
 <body>
-<header class="card">
+<header class="card app-head">
   <div class="card-head" style="margin:0">
     <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 9v6M12 9v6M16 9v6"/></svg></span>
-    <div><h1>Tra cứu sản phẩm</h1><p>Tải lên file · Quét mã vạch · Tra cưu thông tin từ nguồn</p></div>
+    <div class="head-text"><h1>Tra cứu sản phẩm</h1><p>Tải Excel · Quét mã vạch · Xem thông tin từng nguồn</p></div>
+    <button id="menuButton" class="menu-btn" type="button" aria-label="Mở menu" aria-haspopup="menu" aria-expanded="false" aria-controls="menuList"><span class="bars" aria-hidden="true"></span></button>
   </div>
+  <div id="menuList" class="menu-list" role="menu" aria-label="Menu chính" aria-hidden="true"></div>
 </header>
 <main>
   <section class="card" id="dataCard">
     <div class="card-head">
       <span class="icon-tile" aria-hidden="true">📁</span>
-      <div><h2>Dữ liệu Excel</h2><p>Tối đa 5 file dạng .xlsx, .xls, lưu dữ liệu trên thiết bị, không tải lên máy chủ, không tải lên dữ liệu nhạy cảm </p></div>
+      <div><h2>Dữ liệu Excel</h2><p>Tối đa 5 file · .xlsx, .xls · lưu ngay trên thiết bị, không tải lên máy chủ</p></div>
     </div>
+    <div id="envNotice" class="status warn" role="note" hidden></div>
     <label class="file-label" id="fileLabel" for="fileInput">📁 Chọn file Excel</label>
     <input id="fileInput" type="file" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>
     <div id="fileStatus" class="status" aria-live="polite"></div>
@@ -195,7 +228,15 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
     <div id="resultFields" class="results"></div>
   </section>
 </main>
-<footer> Dữ liệu chỉ xử lý trong trình duyệt · Contacts: khoi87261@gmail.com <div id="storageNote" style="margin-top:6px"></div></footer>
+<footer>Barcode Scanner · Mỗi file là một nguồn riêng · Dữ liệu chỉ xử lý trong trình duyệt<div id="storageNote" style="margin-top:6px"></div><div id="perfNote" style="margin-top:6px"></div></footer>
+
+<div id="panelRoot" class="panel-root" aria-hidden="true">
+  <div class="panel-backdrop" data-close="1"></div>
+  <section class="panel-sheet" role="dialog" aria-modal="true" aria-labelledby="panelTitle" tabindex="-1">
+    <div class="panel-head"><h2 id="panelTitle"></h2><button id="panelClose" class="panel-close" type="button" aria-label="Đóng">✕</button></div>
+    <div id="panelBody" class="panel-body"></div>
+  </section>
+</div>
 
 <script>
 (() => {
@@ -210,6 +251,77 @@ let flashOn = false, flashBusy = false, torchSupported = false;
 let camState = "idle";      // idle | starting | live | frozen
 let sessionId = 0;          // tăng mỗi khi mở/dừng/khóa: vô hiệu hóa tác vụ cũ
 let pendingStart = null;    // lời hứa của lần mở camera đang chạy
+// ===================== HẠ TẦNG HIỆU NĂNG =====================
+// Nhường luồng chính (ưu tiên scheduler.yield, dự phòng setTimeout) để giao diện luôn phản hồi.
+const yieldToMain = () => (globalThis.scheduler && typeof scheduler.yield === "function") ? scheduler.yield() : new Promise(r => setTimeout(r, 0));
+// Chia vòng lặp dài thành các lát ~10ms: gọi `await slice()` trong vòng lặp (chỉ đo giờ mỗi 128 vòng cho nhẹ).
+function makeSlicer(budgetMs = 10) {
+  let last = performance.now(), n = 0;
+  return async function slice() {
+    if ((++n & 127) !== 0) return false;
+    if (performance.now() - last < budgetMs) return false;
+    await yieldToMain(); last = performance.now(); return true;
+  };
+}
+function afterPaint(fn) {            // chạy sau khi trình duyệt đã vẽ khung đầu tiên (dự phòng 500ms nếu rAF bị tạm dừng)
+  let done = false; const run = () => { if (done) return; done = true; fn(); };
+  requestAnimationFrame(() => setTimeout(run, 0)); setTimeout(run, 500);
+}
+// Đo hiệu năng ngay trên điện thoại: mở trang với ?perf=1 để xem số liệu ở chân trang.
+const PERF_ON = /[?&]perf=1\b/.test(location.search), perfLines = [], perfLong = [];
+if (PERF_ON) { try { new PerformanceObserver(l => l.getEntries().forEach(e => perfLong.push(e.duration))).observe({ entryTypes: ["longtask"] }); } catch (e) {} }
+function perfNote(label, t0) {
+  if (!PERF_ON) return;
+  perfLines.push(`${label}: ${Math.round(performance.now() - t0)}ms`);
+  const el = document.getElementById("perfNote");
+  if (el) el.textContent = perfLines.join(" · ") + ` · tác vụ dài >50ms: ${perfLong.length}` + (perfLong.length ? ` (lớn nhất ${Math.round(Math.max(...perfLong))}ms)` : "");
+}
+// Thư viện ngoài chỉ tải khi cần; mỗi thư viện một lần, có hạn chờ, có nguồn dự phòng (cùng phiên bản), lỗi thì cho phép thử lại.
+const LIBS = {
+  xlsx:  { label: "đọc Excel", check: () => window.XLSX,
+           urls: ["https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js", "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"] },
+  zxing: { label: "camera",    check: () => window.ZXingBrowser,
+           urls: ["https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js", "https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js"] }
+};
+const libPromises = new Map();
+function loadScript(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement("script"); let done = false;
+    const end = (fn, v) => { if (done) return; done = true; clearTimeout(timer); if (fn === reject) el.remove(); fn(v); };
+    const timer = setTimeout(() => end(reject, new Error("Hết thời gian chờ tải " + url)), timeoutMs);
+    el.async = true; el.src = url;
+    el.onload = () => end(resolve); el.onerror = () => end(reject, new Error("Không tải được " + url));
+    document.head.appendChild(el);
+  });
+}
+function loadLib(name) {
+  const lib = LIBS[name];
+  if (lib.check()) return Promise.resolve(lib.check());
+  if (libPromises.has(name)) return libPromises.get(name);
+  const promise = (async () => {
+    for (const url of lib.urls) {
+      try { await loadScript(url, 15000); if (lib.check()) return lib.check(); } catch (error) { console.warn(error.message); }
+    }
+    const err = new Error(`Không tải được thư viện ${lib.label} (mạng chậm hoặc bị chặn).`); err.name = "LibLoadError"; throw err;
+  })();
+  libPromises.set(name, promise);
+  promise.catch(() => libPromises.delete(name));          // thất bại thì lần sau tải lại từ đầu
+  return promise;
+}
+const fileStub = f => ({ name: f.name, size: f.size, type: f.type || "", lastModified: f.lastModified || Date.now() });   // chỉ giữ thông tin, nhả dữ liệu file khỏi RAM
+const safeFeature = fn => { try { return !!fn(); } catch (e) { return false; } };
+// Môi trường: kiểm tra TÍNH NĂNG thực tế; chuỗi User Agent chỉ dùng để gợi ý thông báo.
+const ENV = {
+  inAppUA: /FBAN|FBAV|FB_IAB|Instagram|Zalo|Line\/|MicroMessenger|Messenger|TikTok|Snapchat/i.test(navigator.userAgent || ""),
+  // Chỉ ĐỌC thuộc tính cũng có thể ném lỗi (SecurityError) ở một số trình duyệt/WebView: mọi kiểm tra đều bọc an toàn.
+  features: {
+    secure: safeFeature(() => window.isSecureContext),
+    indexedDB: safeFeature(() => window.indexedDB),
+    cryptoSubtle: safeFeature(() => window.crypto && crypto.subtle),
+    camera: safeFeature(() => navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+  }
+};
+
 // ---- Cấu hình đọc Excel ----
 const READ_ALL_SHEETS = true;      // mặc định chọn mọi sheet có cột mã vạch; false = mặc định chỉ chọn sheet đầu tiên
 const SKIP_HIDDEN_SHEETS = true;   // mặc định không chọn sheet đang ẩn (thường là dữ liệu cũ)
@@ -220,7 +332,7 @@ const GTIN_LOOSE_MATCH = true;     // so khớp EAN/UPC dạng 8-14 số theo ch
 // Tách đôi để đổi cấu hình không phải ghi lại cả file. Mọi thao tác DB chạy lần lượt qua dbEnqueue().
 const DB_NAME = "barcode-lookup-db", DB_VERSION = 1, SCHEMA_VERSION = 1;
 const STORE_FILES = "files", STORE_SOURCES = "sources";
-let dbPromise = null, dbQueue = Promise.resolve(), restoring = false, persistState = "unknown";
+let dbPromise = null, dbQueue = Promise.resolve(), restoring = false, restoreBlocked = false, restoreRun = null, persistState = "unknown";
 
 // Safari cũ (iOS < 14) chưa có Blob.arrayBuffer(): dùng FileReader thay thế.
 function readBuffer(file) {
@@ -315,7 +427,7 @@ function sourceRecord(source) {
 function saveFileToDB(source) {       // nội dung file gốc + cấu hình, trong MỘT giao dịch
   return dbEnqueue(async () => {
     if (!dataSources.includes(source)) return;
-    const buffer = await readBuffer(source.file);
+    const buffer = source.buffer || await readBuffer(source.file);     // dùng lại bản đã đọc, tránh đọc file lần thứ ba
     const rec = { id: source.id, schema: SCHEMA_VERSION, name: source.file.name, type: source.file.type || "", size: source.file.size, lastModified: source.file.lastModified || Date.now(), buffer };
     await idbTx([STORE_FILES, STORE_SOURCES], "readwrite", tx => {
       tx.objectStore(STORE_FILES).put(rec);
@@ -329,15 +441,18 @@ function saveSourceConfig(source) {   // chỉ cấu hình (nhẹ), dùng khi đ
     await idbTx([STORE_SOURCES], "readwrite", tx => { tx.objectStore(STORE_SOURCES).put(sourceRecord(source)); });
   });
 }
+// Chỉ đọc cấu hình (nhẹ) trước; nội dung từng file được lấy khi cần (loadFile) để không nạp mọi ArrayBuffer vào RAM cùng lúc.
 function getSavedFiles() {
   return dbEnqueue(async () => {
-    let sources = [], files = [];
-    await idbTx([STORE_FILES, STORE_SOURCES], "readonly", tx => {
-      tx.objectStore(STORE_SOURCES).getAll().onsuccess = e => { sources = e.target.result; };
-      tx.objectStore(STORE_FILES).getAll().onsuccess = e => { files = e.target.result; };
-    });
-    const byId = new Map(files.map(f => [f.id, f]));
-    return sources.sort((a, b) => a.order - b.order).map(cfg => ({ cfg, file: byId.get(cfg.id) }));
+    let sources = [];
+    await idbTx([STORE_SOURCES], "readonly", tx => { tx.objectStore(STORE_SOURCES).getAll().onsuccess = e => { sources = e.target.result; }; });
+    return sources.sort((a, b) => a.order - b.order).map(cfg => ({ cfg, loadFile: () => readSavedFileRecord(cfg.id) }));
+  });
+}
+function readSavedFileRecord(id) {
+  return dbEnqueue(async () => {
+    let rec; await idbTx([STORE_FILES], "readonly", tx => { tx.objectStore(STORE_FILES).get(id).onsuccess = e => { rec = e.target.result; }; });
+    return rec;
   });
 }
 function deleteSavedFile(id) {        // xóa một file và đánh lại thứ tự/vai trò các file còn lại
@@ -371,7 +486,7 @@ async function updateStorageNote() {
   try { const est = await navigator.storage?.estimate?.(); if (est?.usage != null) usage = ` Đã dùng khoảng ${(est.usage / 1048576).toFixed(1)} MB.`; } catch (error) {}
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
-  let text = (persistState === "granted" ? "Dữ liệu được lưu trên thiết bị này." : "Dữ liệu được lưu trên thiết bị này; trình duyệt có thể xóa khi thiếu dung lượng nên hãy giữ lại file Excel gốc.") + usage;
+  let text = (persistState === "granted" ? "Dữ liệu được lưu bền vững trên thiết bị này." : "Dữ liệu được lưu trên thiết bị này; trình duyệt có thể xóa khi thiếu dung lượng nên hãy giữ lại file Excel gốc.") + usage;
   if (ios && !standalone && persistState !== "granted") text += " Trên iPhone, Safari có thể xóa dữ liệu web nếu bạn không mở trang này trong 7 ngày; hãy thêm trang vào Màn hình chính (Chia sẻ → Thêm vào MH chính) để giữ lâu hơn (bản trên Màn hình chính có bộ nhớ riêng, cần tải file lại một lần).";
   el.textContent = text;
 }
@@ -387,14 +502,14 @@ async function persistSource(source) {
   if (!dataSources.includes(source)) return;
   const first = !source.blobSaved, hadFailed = source.saveState === "failed";
   try {
-    if (first) { source.saveState = "saving"; renderSources(); flashStoreStatus(`Đang lưu “${source.label}” vào thiết bị…`); await saveFileToDB(source); source.blobSaved = true; }
+    if (first) { source.saveState = "saving"; renderSources(); flashStoreStatus(`Đang lưu “${source.label}” vào thiết bị…`); await saveFileToDB(source); source.blobSaved = true; source.buffer = null; source.file = fileStub(source.file); }   // đã lưu: nhả dữ liệu file khỏi RAM
     else await saveSourceConfig(source);
     if (!dataSources.includes(source)) return;
     source.saveState = "saved"; source.saveError = "";
     if (first) { renderSources(); flashStoreStatus(`Đã lưu “${source.label}” trên thiết bị.`, "success"); requestPersistence(); }
     else if (hadFailed) { renderSources(); flashStoreStatus("Đã lưu lại thành công.", "success"); }
   } catch (error) {
-    let extra = "";
+    source.buffer = null; let extra = "";
     if (error?.name === "QuotaExceededError") { try { const e = await navigator.storage?.estimate?.(); if (e?.quota) extra = ` (đã dùng ${(e.usage / 1048576).toFixed(0)} / ${(e.quota / 1048576).toFixed(0)} MB)`; } catch (e) {} }
     source.saveState = "failed"; source.saveError = describeDbError(error) + extra;
     setStatus($("storeStatus"), `Không thể lưu “${source.label}”: ${source.saveError} File vẫn dùng được trong phiên này nhưng sẽ mất khi tải lại trang.`, "error");
@@ -407,10 +522,25 @@ function makeFileFromRecord(rec) {
   catch (error) { const b = new Blob([rec.buffer], { type: rec.type || "" }); b.name = rec.name; b.lastModified = rec.lastModified; return b; }
 }
 // Khôi phục khi mở web: đọc lại file gốc đã lưu bằng chính logic đọc hiện có, áp lại cấu hình đã chọn.
-async function restoreSavedFiles() {
-  restoring = true; document.body.classList.add("restoring"); fileInput.disabled = true;
+function showRestoreRetry(message) {
+  const st = $("storeStatus");
+  setStatus(st, `${message} Dữ liệu đã lưu vẫn an toàn, chưa bị xóa.`, "error");
+  const btn = document.createElement("button"); btn.id = "retryRestoreButton"; btn.type = "button"; btn.className = "light btn-sm"; btn.style.marginTop = "8px"; btn.textContent = "Thử lại";
+  btn.addEventListener("click", () => restoreSavedFiles()); st.append(document.createElement("br"), btn);
+}
+// Khôi phục khi mở web: chỉ một lần chạy tại một thời điểm.
+function restoreSavedFiles() {
+  if (!restoreRun) restoreRun = doRestore()
+    .catch(error => { restoring = false; document.body.classList.remove("restoring"); fileInput.disabled = false; setStatus($("storeStatus"), `Không thể khôi phục dữ liệu đã lưu: ${describeDbError(error)}`, "error"); })
+    .finally(() => { restoreRun = null; });
+  return restoreRun;
+}
+// Đọc lại file gốc bằng chính logic đọc hiện có, áp lại cấu hình; xử lý LẦN LƯỢT từng file và báo tiến độ.
+async function doRestore() {
+  const t0 = performance.now(), st = $("storeStatus");
+  restoring = true; restoreBlocked = false; document.body.classList.add("restoring"); fileInput.disabled = true;
   updateSearchAvailability();
-  setStatus($("storeStatus"), "Đang khôi phục dữ liệu đã lưu…");
+  setStatus(st, "Đang khôi phục dữ liệu đã lưu…");
   const finish = () => { restoring = false; document.body.classList.remove("restoring"); fileInput.disabled = false; renderSources(); setFileStatus(); };
   let saved, lastError = null;
   for (let attempt = 0; attempt < 3 && !saved; attempt++) {     // Safari có thể lỗi ở lần mở đầu tiên: thử lại tối đa 3 lần
@@ -419,24 +549,31 @@ async function restoreSavedFiles() {
   }
   if (!saved) {
     finish();
-    setStatus($("storeStatus"), `Không thể khôi phục dữ liệu đã lưu: ${describeDbError(lastError)} Bạn vẫn có thể tải file để dùng trong phiên này (dữ liệu sẽ không được lưu lại).`, "error");
+    setStatus(st, `Không thể khôi phục dữ liệu đã lưu: ${describeDbError(lastError)} Bạn vẫn có thể tải file để dùng trong phiên này (dữ liệu sẽ không được lưu lại).`, "error");
     return;
   }
   if (!saved.length) { finish(); flashStoreStatus("Chưa có file dữ liệu đã lưu.", "", 3000); return; }
+  try { await loadLib("xlsx"); }                                  // chỉ tải thư viện Excel khi thực sự có file cần khôi phục
+  catch (error) { finish(); restoreBlocked = true; showRestoreRetry(error.message); return; }
   const problems = [], purge = []; let restored = 0;
-  for (const { cfg, file } of saved) {
+  for (let n = 0; n < saved.length; n++) {
+    const { cfg, loadFile } = saved[n];
     const title = cfg.label || cfg.name;
     if (/\.csv$/i.test(cfg.name || "")) { purge.push(cfg.id); problems.push(`${title}: file CSV không còn được hỗ trợ nên đã bị xóa khỏi bộ nhớ`); continue; }
-    if (!file || !file.buffer || (cfg.schema || 1) > SCHEMA_VERSION) { problems.push(`${title}: ${!file ? "thiếu nội dung file đã lưu" : "được lưu bởi phiên bản mới hơn"}`); continue; }
-    const f = makeFileFromRecord(file);
-    const source = { id: cfg.id, file: f, label: cfg.label || cfg.name.replace(/\.(xlsx|xls)$/i, ""), fingerprint: cfg.fingerprint, status: "reading", headers: [], rows: [], rowMeta: [], sheetCount: 0, sheets: [], selectedSheets: [], index: new Map(), products: [], barcodeIndex: -1, errors: [], blobSaved: true, saveState: "saved" };
+    setStatus(st, `Đang khôi phục dữ liệu (${n + 1}/${saved.length}): ${title}…`);
+    await yieldToMain();                                          // để trình duyệt vẽ tiến độ trước khi làm việc nặng
+    let rec;
+    try { rec = await loadFile(); } catch (error) { problems.push(`${title}: ${describeDbError(error)}`); continue; }
+    if (!rec || !rec.buffer || (cfg.schema || 1) > SCHEMA_VERSION) { problems.push(`${title}: ${!rec ? "thiếu nội dung file đã lưu" : "được lưu bởi phiên bản mới hơn"}`); continue; }
+    const source = { id: cfg.id, file: fileStub(rec), label: cfg.label || cfg.name.replace(/\.(xlsx|xls)$/i, ""), fingerprint: cfg.fingerprint, status: "reading", headers: [], rows: [], rowMeta: [], sheetCount: 0, sheets: [], selectedSheets: [], index: new Map(), products: [], barcodeIndex: -1, errors: [], blobSaved: true, saveState: "saved", buildId: 0, buffer: null };
     dataSources.push(source); renderSources();
     try {
-      source.sheets = await readWorkbook(f);
+      source.sheets = await readWorkbook(source.file, rec.buffer);
+      rec.buffer = null;                                          // đã đọc xong: nhả ArrayBuffer ngay
       const usable = new Set(source.sheets.filter(sh => sh.parsed).map(sh => sh.name));
-      const chosen = (cfg.selectedSheets || []).filter(n => usable.has(n));
-      source.selectedSheets = chosen.length ? source.sheets.map(sh => sh.name).filter(n => chosen.includes(n)) : defaultSheetSelection(source.sheets);
-      const merged = mergeSheets(source.sheets, source.selectedSheets);
+      const chosen = (cfg.selectedSheets || []).filter(n2 => usable.has(n2));
+      source.selectedSheets = chosen.length ? source.sheets.map(sh => sh.name).filter(n2 => chosen.includes(n2)) : defaultSheetSelection(source.sheets);
+      const merged = await mergeSheets(source.sheets, source.selectedSheets);
       source.headers = merged.headers; source.rows = merged.rows; source.rowMeta = merged.meta; source.sheetCount = merged.sheetCount;
       const hidden = new Set(cfg.hiddenColumns || []);
       source.displayColumns = source.headers.map((_, i) => i).filter(i => !hidden.has(source.headers[i]));
@@ -444,7 +581,7 @@ async function restoreSavedFiles() {
       let idx = cfg.barcodeName ? source.headers.indexOf(cfg.barcodeName) : -1;
       if (idx === -1) idx = detectBarcodeColumn(source.headers);
       if (idx === -1) { source.status = "pending"; renderSources(); showColumnPicker(source); }
-      else finalizeSource(source, idx);
+      else await finalizeSource(source, idx);
       restored++;
     } catch (error) {
       source.status = "error"; source.errors = [error.message || "Không đọc lại được file đã lưu."]; source.products = [];
@@ -453,9 +590,10 @@ async function restoreSavedFiles() {
   }
   finish();
   purge.forEach(id => deleteSavedFile(id).catch(() => {}));
-  if (problems.length) setStatus($("storeStatus"), `Đã khôi phục ${restored}/${saved.length} file. Không khôi phục được: ${problems.join("; ")}. Hãy tải lại file Excel bị lỗi.`, "error");
+  if (problems.length) setStatus(st, `Đã khôi phục ${restored}/${saved.length} file. Không khôi phục được: ${problems.join("; ")}. Hãy tải lại file Excel bị lỗi.`, "error");
   else flashStoreStatus(`Đã khôi phục ${restored} file đã lưu.`, "success");
   if (dataSources.some(s => s.status === "ready")) setStatus(scanStatus, "Dữ liệu đã được khôi phục. Bạn có thể nhập mã hoặc bật camera.", "success");
+  perfNote(`Khôi phục ${restored} file`, t0);
   // Chỉ ĐỌC trạng thái lưu trữ bền vững; việc xin cấp quyền chỉ làm sau khi người dùng lưu file (tránh hộp thoại bất ngờ).
   try { navigator.storage?.persisted?.().then(v => { persistState = v ? "granted" : "denied"; updateStorageNote(); }).catch(() => updateStorageNote()); } catch (error) { updateStorageNote(); }
 }
@@ -473,14 +611,18 @@ function barcodeString(value) {
   return text;
 }
 // Khóa so khớp: giữ nguyên mã hiển thị, chỉ dùng khóa này để tra cứu giữa nhiều file.
-function matchKey(value) {
-  const t = barcodeString(value);
-  if (GTIN_LOOSE_MATCH && /^\d{8,14}$/.test(t)) return t.padStart(14, "0");
-  return t;
+function keyOfCode(code) {
+  if (GTIN_LOOSE_MATCH && /^\d{8,14}$/.test(code)) return code.padStart(14, "0");
+  return code;
 }
-function buildIndex(products) {
-  const map = new Map();
-  products.forEach(p => { const a = map.get(p.key); if (a) a.push(p); else map.set(p.key, [p]); });
+function matchKey(value) { return keyOfCode(barcodeString(value)); }
+async function buildIndex(products, isStale = () => false) {
+  const map = new Map(), slice = makeSlicer();
+  for (let i = 0; i < products.length; i++) {
+    const p = products[i], a = map.get(p.key);
+    if (a) a.push(p); else map.set(p.key, [p]);
+    if (await slice() && isStale()) return null;
+  }
   return map;
 }
 function displayValue(value) { return value === null || value === undefined ? "" : String(value); }
@@ -510,7 +652,7 @@ function findBarcodeDuplicates(rows, index) {
   return [];
 }
 // meta[i] = { sheet, line } cho từng dòng dữ liệu (sheet nào, dòng thật trong Excel).
-function validateRows(columns, rows, index, meta=[]) {
+async function validateRows(columns, rows, index, meta=[], isStale=()=>false) {
   const errors = [];
   if (!columns.length) errors.push("File không có tiêu đề cột.");
   if (index < 0 || index >= columns.length) errors.push("Chưa xác định cột mã vạch.");
@@ -519,16 +661,16 @@ function validateRows(columns, rows, index, meta=[]) {
     const m = meta[i] || {};
     return `${m.sheet ? `Sheet "${m.sheet}", ` : ""}dòng ${m.line ?? i+2}`;
   };
-  rows.forEach((row,i)=>{ if (!barcodeString(row[index])) errors.push(`${where(i)}: thiếu mã vạch.`); });
+  // Một lần duyệt: chuẩn hóa mã, tạo khóa, kiểm tra thiếu mã; bản ghi dùng CHÍNH mảng dòng (không nhân đôi bộ nhớ).
+  const products = new Array(rows.length), slice = makeSlicer();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i], code = barcodeString(row[index]);
+    if (!code) errors.push(`${where(i)}: thiếu mã vạch.`);
+    else products[i] = { barcode: code, key: keyOfCode(code), values: row, line: meta[i]?.line ?? i+2, sheet: meta[i]?.sheet || "" };
+    if (await slice() && isStale()) return null;
+  }
   errors.push(...findBarcodeDuplicates(rows,index));
   if (errors.length) return {errors,products:[]};
-  const products = rows.map((row,i)=>({
-    barcode:barcodeString(row[index]),
-    key:matchKey(row[index]),
-    values:columns.map((_,j)=>row[j]===undefined?"":row[j]),
-    line:meta[i]?.line ?? i+2,
-    sheet:meta[i]?.sheet || ""
-  }));
   return {errors,products};
 }
 function updateSearchAvailability() {
@@ -545,8 +687,14 @@ function updateUiState(ready) {
   if (label) label.textContent = dataSources.length ? "＋ Thêm file" : "📁 Chọn file Excel";
   const clearAll = $("clearAllButton"); if (clearAll) clearAll.hidden = !dataSources.length;
 }
-function renderSources() {
-  sourceList.replaceChildren();
+let renderQueued = false;
+function renderSources() {          // gom nhiều yêu cầu vẽ liên tiếp thành MỘT lần vẽ ở khung hình kế tiếp
+  if (renderQueued) return; renderQueued = true;
+  const run = () => { if (!renderQueued) return; renderQueued = false; renderSourcesNow(); };
+  requestAnimationFrame(run); setTimeout(run, 100);
+}
+function renderSourcesNow() {
+  const frag = document.createDocumentFragment();
   sourceList.hidden = dataSources.length === 0;
   dataSources.forEach(source=>{
     const state = source.status==="ready"?"ready":source.status==="error"?"error":source.status==="pending"?"pending":"reading";
@@ -581,6 +729,8 @@ function renderSources() {
     optsSum.addEventListener("click",()=>{source.optionsOpen=!opts.open;});
     opts.append(optsSum);
 
+    // Phần tùy chọn chỉ dựng khi người dùng mở ra (thẻ đang đóng không tốn DOM).
+    const buildOptions=()=>{ opts.dataset.built="1";
     const g1=document.createElement("div"); g1.className="opt-group";
     const label=document.createElement("label"); label.className="opt-title"; label.textContent="Tên nguồn dữ liệu";
     const input=document.createElement("input"); input.type="text"; input.value=source.label; input.maxLength=80; input.setAttribute("aria-label","Nhãn nguồn "+source.file.name);
@@ -645,8 +795,12 @@ function renderSources() {
     });
     dWrap.append(dSum,dHelp,dBar,dGrid); g4.append(dWrap); opts.append(g4);
 
-    card.append(opts); sourceList.append(card);
+    };
+    if(opts.open) buildOptions(); else opts.addEventListener("toggle",()=>{ if(opts.open && !opts.dataset.built) buildOptions(); });
+
+    card.append(opts); frag.append(card);
   });
+  sourceList.replaceChildren(frag);
   updateSearchAvailability();
 }
 function setFileStatus() {
@@ -662,16 +816,22 @@ function showColumnPicker(source) {
   $("columnPrompt").textContent=`File: ${source.file.name}. Chọn đúng cột chứa mã vạch.`;
   $("columnPicker").hidden=false;
 }
-function finalizeSource(source,index) {
-  const validation=validateRows(source.headers,source.rows,index,source.rowMeta||[]);
+async function finalizeSource(source,index) {
+  const t0 = performance.now();
+  const token = source.buildId = (source.buildId | 0) + 1, stale = () => token !== source.buildId;   // bỏ kết quả của lần tính đã cũ
+  const validation = await validateRows(source.headers,source.rows,index,source.rowMeta||[],stale);
+  if (!validation || stale()) return;
+  let idx = null;
+  if (!validation.errors.length) { idx = await buildIndex(validation.products,stale); if (!idx || stale()) return; }
   source.barcodeIndex=index;
   if(validation.errors.length){source.status="error";source.products=[];source.index=new Map();source.errors=validation.errors;}
-  else {source.status="ready";source.products=validation.products;source.index=buildIndex(source.products);source.errors=[];}
+  else {source.status="ready";source.products=validation.products;source.index=idx;source.errors=[];}
   if(pendingColumnSourceId===source.id){pendingColumnSourceId=null;$("columnPicker").hidden=true;}
   renderSources();setFileStatus();
   if(source.status==="error") setStatus(scanStatus,`File "${source.label}" chưa được dùng vì có lỗi dữ liệu. Xem thông báo trong thẻ file.`, "error");
   else setStatus(scanStatus,"Dữ liệu đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.","success");
   scheduleSave(source);
+  perfNote(`Kiểm tra+lập chỉ mục "${source.label}"`, t0);
 }
 
 // Số dài ở định dạng General bị SheetJS hiển thị dạng "8.05178E+12" -> lấy lại giá trị thật để không mất mã vạch.
@@ -685,7 +845,8 @@ function barcodeIndexOf(headers) {
 }
 
 // Đọc MỘT sheet: tự tìm hàng tiêu đề, trả về tiêu đề, các dòng dữ liệu và số dòng thật trong Excel.
-function parseSheet(sheet) {
+// Dùng lại chính các mảng dòng của sheet_to_json (không sao chép) và chia lát để không chặn giao diện.
+async function parseSheet(sheet) {
   if(!sheet || !sheet["!ref"]) return null;
   const startRow=XLSX.utils.decode_range(sheet["!ref"]).s.r;
   // blankrows:true để số dòng khớp đúng dòng thật trong Excel; dòng trống được lọc bên dưới.
@@ -710,36 +871,52 @@ function parseSheet(sheet) {
   const headers=Array.from({length:width},(_,i)=>rawHeaders[i] || `Tiêu đề trống (cột ${i+1})`);
 
   let rawTable=null;   // chỉ đọc bản giá trị gốc khi thật sự gặp số dạng E+
-  const cellValue=(r,i)=>{
-    const v=table[r][i]??"";
-    if(typeof v==="string" && SCI_NUMBER.test(v)){
-      if(!rawTable) rawTable=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:true,blankrows:true});
-      const n=rawTable[r]?.[i];
-      if(typeof n==="number" && Number.isInteger(n) && Math.abs(n)<1e21) return String(n);
-    }
-    return v;
-  };
-
-  const rows=[], lines=[];
+  const rows=[], lines=[], slice=makeSlicer();
   for (let r=headerRowIndex+1; r<table.length; r++) {
-    const row=Array.from({length:width},(_,i)=>cellValue(r,i));
-    if (row.some(value=>String(value??"").trim()!=="")) { rows.push(row); lines.push(startRow+r+1); }
+    const row=table[r]; let filled=false;
+    for (let i=0; i<width; i++) {
+      let v=row[i];
+      if (v===undefined || v===null) v="";
+      else if (typeof v==="string") {
+        if (v!=="" && SCI_NUMBER.test(v)) {
+          if(!rawTable) rawTable=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:true,blankrows:true});
+          const n=rawTable[r]?.[i];
+          if(typeof n==="number" && Number.isInteger(n) && Math.abs(n)<1e21) v=String(n);
+        }
+        if (!filled && v.trim()!=="") filled=true;
+      } else filled=true;           // số/boolean: chuỗi tương ứng luôn khác rỗng
+      row[i]=v;
+    }
+    if (filled) { rows.push(row); lines.push(startRow+r+1); }
+    table[r]=null;                  // nhả sớm từng dòng không dùng
+    await slice();
   }
+  rawTable=null;
   if(!rows.length) return null;
   return {headers,rows,lines};
 }
 
+// Điểm tách riêng việc phân tích workbook: sau này có thể chuyển sang Web Worker mà không đụng logic khác.
+async function parseWorkbook(buffer) {
+  await yieldToMain();                                          // cho trình duyệt vẽ trạng thái "Đang đọc…" trước khi chạy lệnh nặng
+  return XLSX.read(buffer,{type:"array",cellDates:false});
+}
 // Đọc file và giữ dữ liệu TỪNG sheet (chưa gộp) để người dùng chọn sheet sử dụng.
-async function readWorkbook(file) {
-  if(!window.XLSX) throw new Error("Không tải được thư viện Excel. Hãy kiểm tra kết nối Internet.");
-  const buffer=await readBuffer(file);
-  const workbook=XLSX.read(buffer,{type:"array",cellDates:false});
+async function readWorkbook(file, buffer) {
+  const t0 = performance.now();
+  await loadLib("xlsx");
+  buffer = buffer || await readBuffer(file);
+  const workbook=await parseWorkbook(buffer);
+  perfNote(`Phân tích Excel "${file.name}"`, t0);
   if(!workbook.SheetNames.length) throw new Error("File Excel không có sheet.");
   const sheetMeta=workbook.Workbook?.Sheets||[];
-  const sheets=workbook.SheetNames.map((name,idx)=>{
-    const parsed=parseSheet(workbook.Sheets[name]);
-    return {name,hidden:!!sheetMeta[idx]?.Hidden,parsed,rowCount:parsed?parsed.rows.length:0,hasBarcode:!!parsed&&barcodeIndexOf(parsed.headers)!==-1};
-  });
+  const sheets=[];
+  for (let idx=0; idx<workbook.SheetNames.length; idx++) {
+    const name=workbook.SheetNames[idx];
+    const parsed=await parseSheet(workbook.Sheets[name]);
+    workbook.Sheets[name]=undefined;                            // sheet đã đọc xong: nhả đối tượng ô của SheetJS
+    sheets.push({name,hidden:!!sheetMeta[idx]?.Hidden,parsed,rowCount:parsed?parsed.rows.length:0,hasBarcode:!!parsed&&barcodeIndexOf(parsed.headers)!==-1});
+  }
   if(!sheets.some(s=>s.parsed)) throw new Error("Không có sheet nào chứa dữ liệu.");
   return sheets;
 }
@@ -755,44 +932,51 @@ function defaultSheetSelection(sheets) {
 }
 // Gộp các sheet được chọn thành một bảng: cột mã vạch của mọi sheet gộp chung một cột,
 // các cột cùng tên cũng gộp chung; cột chỉ có ở một sheet được thêm vào cuối.
-function mergeSheets(sheets, selectedNames) {
+// Lượt 1 tính cột, lượt 2 tạo dòng đúng độ rộng ngay (không qua bản sao trung gian); chỉ một sheet thì dùng lại chính mảng dòng.
+async function mergeSheets(sheets, selectedNames) {
+  const t0 = performance.now();
   const chosen=sheets.filter(s=>s.parsed && selectedNames.includes(s.name));
-  const headers=[], keyIndex=new Map(), rawRows=[], meta=[];
-  for (const {name,parsed} of chosen) {
+  const headers=[], keyIndex=new Map(), maps=[];
+  for (const {parsed} of chosen) {
     const bc=barcodeIndexOf(parsed.headers);
     const seen=new Map();
-    const colMap=parsed.headers.map((h,i)=>{
+    maps.push(parsed.headers.map((h,i)=>{
       const isEmpty=h.startsWith("Tiêu đề trống");
       let key=i===bc?"__barcode":(isEmpty?`__empty${i}`:(normalizeHeader(h)||`__raw${h}`));
       const n=(seen.get(key)||0)+1; seen.set(key,n);
       if(n>1) key+=`#${n}`;             // hai cột trùng tên trong cùng sheet vẫn là hai cột riêng
       if(!keyIndex.has(key)){keyIndex.set(key,headers.length);headers.push(h);}
       return keyIndex.get(key);
-    });
-    parsed.rows.forEach((row,k)=>{
-      const out=[];
-      colMap.forEach((target,i)=>{out[target]=row[i];});
-      rawRows.push(out);
-      meta.push({sheet:name,line:parsed.lines[k]});
-    });
+    }));
   }
   const sheetCount=chosen.length;
   const addSheetCol=sheetCount>1;
   if(addSheetCol) headers.push("Tên sheet");
-  const width=headers.length;
-  const rows=rawRows.map((r,k)=>{
-    const out=Array.from({length:width},(_,i)=>r[i]??"");
-    if(addSheetCol) out[width-1]=meta[k].sheet;
-    return out;
-  });
+  const width=headers.length, rows=[], meta=[], slice=makeSlicer();
+  for (let c=0; c<chosen.length; c++) {
+    const {name,parsed}=chosen[c], colMap=maps[c];
+    const identity=!addSheetCol && colMap.length===width && colMap.every((t,i)=>t===i);
+    for (let k=0; k<parsed.rows.length; k++) {
+      const src=parsed.rows[k];
+      let out;
+      if (identity) out=src;
+      else { out=new Array(width).fill(""); for (let i=0;i<colMap.length;i++) out[colMap[i]]=src[i]; if(addSheetCol) out[width-1]=name; }
+      rows.push(out); meta.push({sheet:name,line:parsed.lines[k]});
+      await slice();
+    }
+  }
+  perfNote("Gộp sheet", t0);
   return {headers,rows,meta,sheetCount};
 }
 // Gộp lại sau khi đổi sheet, giữ nguyên cột hiển thị và cột mã vạch đã chọn (theo tên cột).
-function rebuildSource(source) {
+// Dùng dữ liệu sheet đã đọc sẵn trong bộ nhớ: KHÔNG phân tích lại file Excel.
+async function rebuildSource(source) {
+  const token = source.buildId = (source.buildId | 0) + 1;
   const dc=Array.isArray(source.displayColumns)?source.displayColumns:source.headers.map((_,i)=>i);
   const hiddenNames=new Set(source.headers.filter((_,i)=>!dc.includes(i)));
   const prevBarcode=source.headers[source.barcodeIndex];
-  const m=mergeSheets(source.sheets,source.selectedSheets);
+  const m=await mergeSheets(source.sheets,source.selectedSheets);
+  if (token !== source.buildId) return;                         // người dùng đã đổi lựa chọn tiếp: bỏ kết quả cũ
   source.headers=m.headers;source.rows=m.rows;source.rowMeta=m.meta;source.sheetCount=m.sheetCount;
   source.displayColumns=source.headers.map((_,i)=>i).filter(i=>!hiddenNames.has(source.headers[i]));
   let idx=prevBarcode!==undefined?source.headers.indexOf(prevBarcode):-1;
@@ -802,53 +986,58 @@ function rebuildSource(source) {
     renderSources();showColumnPicker(source);setFileStatus();
     setStatus(scanStatus,`Cần chọn lại cột mã vạch cho "${source.label}".`,"error");
     scheduleSave(source);
-  } else finalizeSource(source,idx);
+  } else await finalizeSource(source,idx);
 }
 function toggleSheet(source,name,checked) {
   const next=checked?[...new Set([...source.selectedSheets,name])]:source.selectedSheets.filter(n=>n!==name);
   if(!next.length){setStatus(scanStatus,"Cần chọn ít nhất một sheet.","error");renderSources();return;}
   source.selectedSheets=source.sheets.map(s=>s.name).filter(n=>next.includes(n));   // giữ thứ tự sheet trong file
-  rebuildSource(source);
+  rebuildSource(source).catch(error=>setStatus(scanStatus,"Không áp dụng được lựa chọn sheet: "+(error.message||error),"error"));
 }
-async function fingerprint(file) {
-  const buffer=await readBuffer(file);
+async function fingerprint(file, buffer) {
+  buffer = buffer || await readBuffer(file);
   if(window.crypto?.subtle){
     const hash=await crypto.subtle.digest("SHA-256",buffer);
     return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
   }
   // Fallback fingerprint is less strong, so only a preliminary duplicate warning.
   const bytes=new Uint8Array(buffer);let hash=2166136261;
-  for(let i=0;i<bytes.length;i++) hash=Math.imul(hash^bytes[i],16777619);
+  for(let i=0;i<bytes.length;i++){ hash=Math.imul(hash^bytes[i],16777619); if((i&0xFFFFF)===0xFFFFF) await yieldToMain(); }
   return `${file.size}-${(hash>>>0).toString(16)}`;
 }
 async function addFiles(files) {
   const chosen=[...files];
   if(!chosen.length)return;
   if(restoring){setStatus(fileStatus,"Đang khôi phục dữ liệu đã lưu, vui lòng đợi rồi chọn file.","error");fileInput.value="";return;}
+  if(restoreBlocked){setStatus(fileStatus,"Chưa khôi phục được dữ liệu đã lưu. Hãy bấm “Thử lại” ở trên trước khi thêm file để không ghi đè dữ liệu cũ.","error");fileInput.value="";return;}
+  loadLib("xlsx").catch(()=>{});    // bắt đầu tải thư viện Excel song song với việc đọc file
   if(dataSources.length+chosen.length>5){setStatus(fileStatus,`Bạn đang có ${dataSources.length} file. Chỉ được thêm tối đa 5 file; hãy chọn ${Math.max(0,5-dataSources.length)} file nữa hoặc xóa bớt file hiện có.`,"error");fileInput.value="";return;}
   const notes=[];   // thông báo từ chối file: giữ lại đến cuối để không bị dòng trạng thái chung ghi đè
   for(const file of chosen){
     const ext=file.name.split(".").pop().toLowerCase();
     if(!["xlsx","xls"].includes(ext)){notes.push(`"${file.name}" không phải file Excel .xlsx hoặc .xls.`);continue;}
     setStatus(fileStatus,`Đang kiểm tra file ${file.name}…`);
-    let hash;
-    try{hash=await fingerprint(file);}catch(e){notes.push(`Không thể kiểm tra file ${file.name}: ${e.message}`);continue;}
+    let buffer, hash;
+    try{buffer=await readBuffer(file);hash=await fingerprint(file,buffer);}catch(e){notes.push(`Không thể kiểm tra file ${file.name}: ${e.message}`);continue;}   // đọc file một lần, dùng cho cả kiểm tra trùng, phân tích và lưu
     const duplicate=dataSources.find(s=>s.fingerprint===hash);
     if(duplicate){
       const keep=window.confirm(`File "${file.name}" có nội dung giống file "${duplicate.file.name}".\n\nOK: vẫn giữ file này như một nguồn riêng.\nCancel: bỏ qua file trùng.`);
       if(!keep)continue;
     }
-    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],rowMeta:[],sheetCount:0,sheets:[],selectedSheets:[],index:new Map(),products:[],barcodeIndex:-1,errors:[],blobSaved:false,saveState:""};
+    const source={id:`s${Date.now()}_${Math.random().toString(36).slice(2,8)}`,file,label:file.name.replace(/\.(xlsx|xls)$/i,""),fingerprint:hash,status:"reading",headers:[],rows:[],rowMeta:[],sheetCount:0,sheets:[],selectedSheets:[],index:new Map(),products:[],barcodeIndex:-1,errors:[],blobSaved:false,saveState:"",buildId:0,buffer};
     dataSources.push(source);renderSources();
     try{
-      source.sheets=await readWorkbook(file);source.selectedSheets=defaultSheetSelection(source.sheets);
-      const parsed=mergeSheets(source.sheets,source.selectedSheets);source.headers=parsed.headers;source.rows=parsed.rows;source.rowMeta=parsed.meta;source.sheetCount=parsed.sheetCount;source.displayColumns=source.headers.map((_,i)=>i);
+      source.sheets=await readWorkbook(file,buffer);source.selectedSheets=defaultSheetSelection(source.sheets);
+      const parsed=await mergeSheets(source.sheets,source.selectedSheets);source.headers=parsed.headers;source.rows=parsed.rows;source.rowMeta=parsed.meta;source.sheetCount=parsed.sheetCount;source.displayColumns=source.headers.map((_,i)=>i);
       if(!source.headers.length) throw new Error("File không có tiêu đề cột.");
       const index=detectBarcodeColumn(source.headers);
       if(index===-1){source.status="pending";renderSources();showColumnPicker(source);setStatus(fileStatus,`Cần chọn cột mã vạch cho "${source.file.name}".`,"error");}
-      else finalizeSource(source,index);
+      else await finalizeSource(source,index);
       scheduleSave(source,true);      // tự động lưu ngay khi file đọc được (không cần bấm lưu)
-    }catch(error){source.status="error";source.errors=[error.message||"Không đọc được file Excel."];source.products=[];renderSources();setFileStatus();}
+    }catch(error){
+      if(error.name==="LibLoadError"){dataSources=dataSources.filter(s=>s!==source);notes.push(error.message+" Hãy kiểm tra mạng rồi chọn lại file.");continue;}   // chưa đọc được vì thiếu thư viện: không giữ thẻ lỗi
+      source.status="error";source.errors=[error.message||"Không đọc được file Excel."];source.products=[];source.buffer=null;renderSources();setFileStatus();
+    }
   }
   fileInput.value="";
   renderSources();setFileStatus();
@@ -923,7 +1112,13 @@ function renderProductCard(source,product,query,others=[]) {
     const dup=document.createElement("details");dup.className="dup-rows";
     const sm=document.createElement("summary");sm.textContent=`Xem thêm bản ghi (${others.length})`;dup.append(sm);
     const help=document.createElement("p");help.className="opt-help";help.textContent=`Mã này còn ${others.length} dòng khác trong sheet “${product.sheet||"—"}” của file “${source.file.name}”. Bản ghi chính đang hiển thị là dòng ${product.line}.`;dup.append(help);
-    others.forEach(o=>dup.append(buildRecordCard(source,o,query,{extra:true,base:product})));
+    // Bản ghi trùng chỉ dựng khi người dùng bấm "Xem thêm bản ghi" (không tốn DOM cho phần đang đóng).
+    dup.addEventListener("toggle",()=>{
+      if(!dup.open||dup.dataset.built) return; dup.dataset.built="1";
+      const frag=document.createDocumentFragment();
+      others.forEach(o=>frag.append(buildRecordCard(source,o,query,{extra:true,base:product})));
+      dup.append(frag);
+    });
     card.append(dup);
   }
   return card;
@@ -976,9 +1171,9 @@ function searchBarcode(value) {
     return;
   }
 
-  matches.forEach(({ source, product, others }) => {
-    resultFields.append(renderProductCard(source, product, query, others));
-  });
+  const frag = document.createDocumentFragment();
+  matches.forEach(({ source, product, others }) => frag.append(renderProductCard(source, product, query, others)));
+  resultFields.append(frag);
   if (missing.length) {
     const note = document.createElement("div"); note.className = "result-note";
     note.textContent = "Không có mã này ở: " + missing.map(m => (m.source.label || m.source.file.name) + ((m.source.selectedSheets || []).length > 1 ? ` › Sheet ${m.sheet}` : "")).join("; ") + ".";
@@ -1021,8 +1216,10 @@ function detectCamEnv(){
   const inApp = /FBAN|FBAV|FB_IAB|Instagram|Zalo|Line\/|MicroMessenger|Messenger|TikTok|Snapchat/i.test(ua);
   let tier = "high";
   if (isAndroid) {
-    const mem = navigator.deviceMemory || 4, cores = navigator.hardwareConcurrency || 4;
-    tier = (mem <= 3 || cores <= 4) ? "low" : (mem >= 6 && cores >= 8) ? "high" : "mid";
+    const mem = navigator.deviceMemory, cores = navigator.hardwareConcurrency;
+    if (mem == null && cores == null) tier = "mid";                       // không biết cấu hình (thường là WebView): chọn mức vừa, không đoán "mạnh"
+    else tier = ((mem ?? 4) <= 3 || (cores ?? 4) <= 4) ? "low" : ((mem ?? 4) >= 6 && (cores ?? 4) >= 8) ? "high" : "mid";
+    if (inApp && tier === "high") tier = "mid";                           // trình duyệt nhúng: không mặc định 1080p
   }
   // delay: ms nghỉ giữa hai lần quét; tryHarder: cho phép chuyển sang quét kỹ nếu 2,5 giây chưa thấy mã
   const TUNING = {
@@ -1203,13 +1400,19 @@ async function startCameraScan(){
     setStatus(scanStatus, CAM_ENV.inApp ? "Trình duyệt trong ứng dụng (Zalo, Facebook…) không cho dùng camera. Hãy mở trang bằng Safari hoặc Chrome."
       : "Camera cần HTTPS và trình duyệt hỗ trợ. Hãy mở trang qua HTTPS; bạn vẫn có thể nhập mã thủ công.", "error"); return;
   }
-  if (!window.ZXingBrowser) { setStatus(scanStatus,"Không tải được thư viện camera. Kiểm tra Internet hoặc nhập mã thủ công.","error"); return; }
 
   const sid = ++sessionId;
   clearFrozen();
   camState = "starting";
   syncCameraUI();
   setStatus(scanStatus, "Đang mở camera…");
+  if (!window.ZXingBrowser) {                                   // thư viện camera chỉ tải khi người dùng bấm Quét mã
+    setStatus(scanStatus, "Đang tải thư viện camera…");
+    try { await loadLib("zxing"); }
+    catch (error) { if (sid === sessionId) { stopCamera(); setStatus(scanStatus, error.message + " Bạn vẫn có thể nhập mã thủ công, hoặc bấm Quét mã để thử lại.", "error"); } return; }
+    if (sid !== sessionId) return;
+    setStatus(scanStatus, "Đang mở camera…");
+  }
 
   // Nếu lần mở trước (đã bị dừng) vẫn đang chờ thư viện, đợi nó tự dọn xong rồi mới mở lại.
   if (pendingStart) {
@@ -1391,7 +1594,141 @@ $("clearAllButton").addEventListener("click", async () => {
   updateStorageNote();
 });
 window.addEventListener("pageshow", e => { if (e.persisted && !restoring && !dataSources.length) restoreSavedFiles().catch(() => {}); });   // quay lại từ bộ nhớ đệm trang (Safari)
-restoreSavedFiles().catch(error => { restoring = false; document.body.classList.remove("restoring"); fileInput.disabled = false; setStatus($("storeStatus"), `Không thể khôi phục dữ liệu đã lưu: ${describeDbError(error)}`, "error"); });
+// ===================== MENU HAMBURGER + PANEL =====================
+// Mở rộng sau này: thêm một mục vào MENU_ITEMS và một mục tương ứng vào PANELS là đủ.
+const MENU_ITEMS = [
+  { id: "guide",   label: "Hướng dẫn",                     panel: "guide" },
+  { id: "ai",      label: "AI chuyển đổi file thông minh", panel: "ai" },
+  { id: "contact", label: "Liên hệ",                       panel: "contact" },
+  { id: "donate",  label: "Donate",                        panel: "donate" }
+];
+// Cây hướng dẫn (dữ liệu thuần): thêm nhánh/lá bằng cách thêm phần tử; gán `content` (chuỗi) khi có nội dung.
+// TODO: Phát triển hệ thống hướng dẫn dạng cây phân cấp.
+const GUIDE_TREE = [{ id: "root", title: "Hướng dẫn sử dụng", children: [
+  { id: "intro",  title: "Giới thiệu ứng dụng" },
+  { id: "upload", title: "Tải dữ liệu Excel" },
+  { id: "manage", title: "Quản lý nguồn dữ liệu" },
+  { id: "search", title: "Tra cứu barcode" },
+  { id: "camera", title: "Quét barcode bằng camera" },
+  { id: "errors", title: "Xử lý lỗi thường gặp" }
+] }];
+const GUIDE_PLACEHOLDER = "Nội dung hướng dẫn đang được cập nhật";
+function placeholderBlock(text) { const p = document.createElement("p"); p.className = "guide-content"; p.textContent = text; return p; }
+function renderGuidePanel(body) {
+  const content = placeholderBlock(GUIDE_PLACEHOLDER);
+  const show = node => {
+    content.replaceChildren();
+    const h = document.createElement("strong"); h.textContent = node.title;
+    const t = document.createElement("div"); t.style.marginTop = "6px"; t.textContent = (typeof node.content === "string" && node.content) ? node.content : GUIDE_PLACEHOLDER;
+    content.append(h, t);
+  };
+  const build = (nodes, level) => {
+    const ul = document.createElement("ul");
+    if (level === 0) { ul.className = "tree"; ul.setAttribute("role", "tree"); } else ul.setAttribute("role", "group");
+    nodes.forEach(node => {
+      const li = document.createElement("li"); li.setAttribute("role", "none");
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "tree-node"; btn.setAttribute("role", "treeitem"); btn.textContent = node.title;
+      if (node.children && node.children.length) {
+        const sub = build(node.children, level + 1), open = level === 0;
+        btn.setAttribute("aria-expanded", String(open)); sub.hidden = !open;
+        btn.addEventListener("click", () => { const was = btn.getAttribute("aria-expanded") === "true"; btn.setAttribute("aria-expanded", String(!was)); sub.hidden = was; });
+        li.append(btn, sub);
+      } else {
+        btn.addEventListener("click", () => { body.querySelectorAll(".tree-node[aria-current]").forEach(n => n.removeAttribute("aria-current")); btn.setAttribute("aria-current", "true"); show(node); });
+        li.append(btn);
+      }
+      ul.append(li);
+    });
+    return ul;
+  };
+  body.append(build(GUIDE_TREE, 0), content);
+}
+const PANELS = {
+  guide: { title: "Hướng dẫn", render: renderGuidePanel },
+  ai: { title: "AI chuyển đổi file thông minh", render(body) {
+    // TODO: Phát triển AI chuyển đổi file thông minh.
+    const b = document.createElement("div"); b.className = "badge-dev"; b.textContent = "ĐANG PHÁT TRIỂN";
+    body.append(b, placeholderBlock("Tính năng đang được xây dựng nhằm hỗ trợ chuyển đổi và xử lý file thông minh."));
+  } },
+  contact: { title: "Liên hệ", render(body) {
+    // TODO: Bổ sung thông tin Liên hệ chính thức.
+    body.append(placeholderBlock("Nội dung đang được cập nhật"));
+  } },
+  donate: { title: "Donate", render(body) {
+    // TODO: Bổ sung phương thức Donate chính thức.
+    body.append(placeholderBlock("Nội dung đang được cập nhật"));
+  } }
+};
+const menuButton = $("menuButton"), menuList = $("menuList");
+const panelRoot = $("panelRoot"), panelBody = $("panelBody"), panelTitle = $("panelTitle"), panelClose = $("panelClose");
+const panelCache = new Map(); let panelOpen = null, panelReturnFocus = null;
+const isMenuOpen = () => menuList.classList.contains("open");
+function buildMenu() {
+  const frag = document.createDocumentFragment();
+  MENU_ITEMS.forEach(item => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "menu-item"; b.setAttribute("role", "menuitem"); b.dataset.panel = item.panel; b.textContent = item.label; frag.append(b);
+  });
+  menuList.replaceChildren(frag);
+}
+function setMenu(open, focusFirst = false) {
+  menuList.classList.toggle("open", open); menuList.setAttribute("aria-hidden", String(!open));
+  menuButton.setAttribute("aria-expanded", String(open)); menuButton.setAttribute("aria-label", open ? "Đóng menu" : "Mở menu");
+  if (open && focusFirst) menuList.querySelector(".menu-item")?.focus();
+}
+function openPanel(id, returnTo) {
+  const def = PANELS[id]; if (!def) return;
+  stopCamera();                                                   // phủ lớp lên trên: giải phóng camera để không chạy ngầm
+  panelTitle.textContent = def.title;
+  let node = panelCache.get(id);
+  if (!node) { node = document.createElement("div"); def.render(node); panelCache.set(id, node); }
+  panelBody.replaceChildren(node);
+  panelReturnFocus = returnTo || document.activeElement; panelOpen = id;
+  panelRoot.classList.add("open"); panelRoot.setAttribute("aria-hidden", "false"); document.documentElement.classList.add("no-scroll");
+  panelClose.focus({ preventScroll: true });
+}
+function closePanel() {
+  if (!panelOpen) return;
+  panelOpen = null; panelRoot.classList.remove("open"); panelRoot.setAttribute("aria-hidden", "true"); document.documentElement.classList.remove("no-scroll");
+  (panelReturnFocus && document.contains(panelReturnFocus) ? panelReturnFocus : menuButton).focus({ preventScroll: true });
+}
+menuButton.addEventListener("click", () => setMenu(!isMenuOpen()));
+menuList.addEventListener("click", e => { const b = e.target.closest(".menu-item"); if (!b) return; setMenu(false); openPanel(b.dataset.panel, menuButton); });
+panelRoot.addEventListener("click", e => { if (e.target.closest("[data-close],#panelClose")) closePanel(); });
+document.addEventListener("pointerdown", e => { if (isMenuOpen() && !e.target.closest("#menuList,#menuButton")) setMenu(false); }, { passive: true });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (panelOpen) { closePanel(); e.preventDefault(); } else if (isMenuOpen()) { setMenu(false); menuButton.focus(); e.preventDefault(); } return; }
+  if (panelOpen && e.key === "Tab") {                             // giữ phím Tab trong hộp thoại
+    const f = [...panelRoot.querySelectorAll("button,[href],input,select,textarea,[tabindex]:not([tabindex='-1'])")].filter(x => !x.disabled && x.offsetParent !== null);
+    if (!f.length) return; const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); } else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+    return;
+  }
+  if (isMenuOpen() && ["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+    const items = [...menuList.querySelectorAll(".menu-item")], i = items.indexOf(document.activeElement);
+    const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+    items[next].focus(); e.preventDefault();
+  }
+});
+// Thông báo môi trường: dựa trên TÍNH NĂNG thực tế; chỉ hiện khi đang ở trình duyệt nhúng VÀ có tính năng bị thiếu.
+function showEnvNotice() {
+  const f = ENV.features;
+  if (!(ENV.inAppUA && (!f.camera || !f.indexedDB || !f.secure))) return;
+  const el = $("envNotice");
+  el.textContent = "Bạn đang mở trang trong một ứng dụng khác (Zalo, Facebook, Messenger…) nên camera hoặc việc lưu dữ liệu có thể bị giới hạn. Nếu gặp lỗi, hãy mở liên kết này bằng Chrome hoặc Safari.";
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "light btn-sm"; b.textContent = "Sao chép liên kết";
+    b.addEventListener("click", () => navigator.clipboard.writeText(location.href).then(() => { b.textContent = "Đã sao chép"; }, () => { b.textContent = "Không sao chép được"; }));
+    el.append(document.createElement("br"), b);
+  }
+  el.hidden = false;
+}
+// ===================== KHỞI ĐỘNG =====================
+buildMenu(); showEnvNotice();
+$("fileLabel").addEventListener("pointerdown", () => { loadLib("xlsx").catch(() => {}); }, { passive: true });          // người dùng sắp chọn file: nạp trước thư viện Excel
+$("startCamera").addEventListener("pointerdown", () => { if (!$("startCamera").disabled) loadLib("zxing").catch(() => {}); }, { passive: true });   // sắp quét: nạp trước thư viện camera
+// Khóa việc thêm file NGAY (đồng bộ) để không file nào chen vào trước khi dữ liệu cũ được khôi phục; phần việc nặng chạy sau khi vẽ xong.
+if (ENV.features.indexedDB) { restoring = true; document.body.classList.add("restoring"); fileInput.disabled = true; }
+afterPaint(() => { restoreSavedFiles(); });                       // giao diện hiện trước, khôi phục dữ liệu chạy sau
 })();
 </script>
 </body>
