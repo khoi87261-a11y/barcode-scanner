@@ -287,7 +287,7 @@ body .adm-sec .file-label{opacity:1;pointer-events:auto;min-height:50px;backgrou
     <div id="resultFields" class="results"></div>
   </section>
 </main>
-<footer><a href="#" id="adminLink" style="color:inherit">Quản trị</a> · Barcode Scanner · Contacts: khoi87261@gmail.com<div id="storageNote" style="margin-top:6px"></div><div id="perfNote" style="margin-top:6px"></div></footer>
+<footer><a href="#" id="adminLink" style="color:inherit"> <div id="storageNote" style="margin-top:6px"></div><div id="perfNote" style="margin-top:6px"></div></footer>
 
 <div id="panelRoot" class="panel-root" aria-hidden="true">
   <div class="panel-backdrop" data-close="1"></div>
@@ -2281,7 +2281,7 @@ const PANELS = {
   admin: { title: "Quản trị giá", render(body) { body.innerHTML = ADMIN_HTML; initAdmin(body); } },
   contact: { title: "Liên hệ", render(body) {
     // TODO: Bổ sung thông tin Liên hệ chính thức.
-    body.append(placeholderBlock("Nội dung đang được cập nhật"));
+    body.append(placeholderBlock("Contacts: khoi87261@gmail.com"));
   } },
   donate: { title: "Donate", render(body) {
     // TODO: Bổ sung phương thức Donate chính thức.
