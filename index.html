@@ -28,7 +28,7 @@ button:focus-visible,.file-label:focus-within,summary:focus-visible{outline:3px 
 .file-label{width:100%;min-height:54px}
 .has-files .file-label{background:#e8efff;color:var(--blue-d);min-height:48px;margin-top:12px}
 input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-input[type=text],select{width:100%;min-height:52px;padding:12px 14px;border:1.5px solid #cbd5e1;border-radius:14px;background:#fff;color:var(--ink);font:inherit;font-size:16px}
+input[type=text],input[type=password],select{width:100%;min-height:52px;padding:12px 14px;border:1.5px solid #cbd5e1;border-radius:14px;background:#fff;color:var(--ink);font:inherit;font-size:16px}
 input[type=text]:focus,select:focus{outline:3px solid #bfdbfe;border-color:var(--blue)}
 .row{display:flex;gap:10px;margin-top:10px}.row>*{flex:1;min-width:0}
 .status{margin:12px 0 0;padding:11px 13px;border-radius:12px;background:#eef2f7;color:#334155;border-left:4px solid #94a3b8;font-size:14px;font-weight:600;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere}
@@ -164,7 +164,54 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
 .status.warn button{margin-top:8px}
 @media(min-width:700px){.panel-sheet{left:50%;right:auto;bottom:auto;top:50%;width:min(560px,92vw);border-radius:20px;transform:translate(-50%,-46%)}.panel-root.open .panel-sheet{transform:translate(-50%,-50%)}}
 @media(prefers-reduced-motion:reduce){.menu-list,.panel-backdrop,.panel-sheet,.tree-node::before{transition:none!important}}
+
+/* ---- Giá mới nhất (Google Sheets nhiều sheet) + Quản trị ---- */
+.role-price{background:#dcfce7;color:#166534}
+.product-card.is-price{border-left:4px solid var(--green);background:#f6fef9}
+#syncPrices{width:100%}
+#priceStatus,#admInfo,.adm-sec .status{white-space:pre-line;overflow-wrap:anywhere}
+.adm-grid{display:grid;gap:12px}
+.adm-sec{border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+.adm-sec h3{margin:0 0 4px}
+.adm-sec p{font-size:13px;color:var(--muted);margin-top:4px}
+.adm-sec>button,.adm-sec .file-label{width:100%;margin-top:10px}
+.adm-sec input[type=text],.adm-sec input[type=password],.adm-sec select{margin-top:10px}
+.adm-sec label.adm-field{display:block;font-weight:700;font-size:13.5px;margin-top:12px}
+.adm-sec label.adm-field input,.adm-sec label.adm-field select{margin-top:6px;font-weight:400}
+.adm-sec a{color:var(--blue-d)}
+.adm-sec summary{cursor:pointer;font-weight:700}
+body .adm-sec .file-label{opacity:1;pointer-events:auto;min-height:50px;background:#e8efff;color:var(--blue-d)}
+.gs-bar{display:flex;gap:8px;margin-top:10px}
+.gs-bar button{flex:1;margin:0}
+.gs-list{display:grid;gap:10px;margin-top:10px}
+.gs-card{border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;background:#fff;min-width:0}
+.gs-card.off{background:#f8fafc}
+.gs-top{display:flex;gap:10px;align-items:flex-start}
+.gs-top label{display:flex;gap:10px;align-items:flex-start;flex:1;min-width:0;cursor:pointer}
+.gs-card input[type=checkbox]{width:22px;height:22px;min-height:0;margin:2px 0 0;flex:none}
+.gs-name{font-weight:700;overflow-wrap:anywhere}
+.gs-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.gs-badge{font-size:12px;padding:2px 8px;border-radius:999px;background:#eef2f7;color:#334155;font-weight:600}
+.gs-badge.hid{background:#fef3c7;color:#92400e}
+.gs-badge.bad{background:#fdecec;color:#b91c1c}
+.gs-warn{font-size:12.5px;color:#b45309;margin-top:6px;font-weight:600;white-space:pre-line}
+.gs-card details{margin-top:8px}
+.gs-card summary{padding:8px 0;font-size:13.5px}
+.gs-card .gs-lab{display:block;font-weight:700;font-size:13px;margin-top:10px}
+.gs-card select{margin-top:6px}
+.gs-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 10px;max-height:220px;overflow:auto;margin-top:6px}
+.gs-col{display:flex;gap:6px;align-items:flex-start;font-size:13px;font-weight:400;cursor:pointer}
+.gs-col input[type=checkbox]{width:18px;height:18px;margin-top:1px}
+.gs-prev{overflow:auto;max-height:200px;margin-top:8px;border:1px solid var(--line);border-radius:10px}
+.gs-prev table{border-collapse:collapse;font-size:12px}
+.gs-prev td{border:1px solid var(--line);padding:3px 6px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.gs-prev tr.hdr td{background:#e0e7ff;font-weight:700}
+.gs-prev td.bc{background:#dcfce7}
+.gs-prev td.n{color:var(--muted);background:#f1f5f9}
 </style>
+<!-- ============ CẤU HÌNH DUY NHẤT: dán URL "Ứng dụng web" Google Apps Script (kết thúc bằng /exec) vào giữa hai dấu nháy ============
+     URL này không phải bí mật: nó chỉ cho phép ĐỌC giá. Ghi dữ liệu luôn cần mật khẩu quản trị (lưu trong Script Properties của Apps Script). -->
+<script>window.PRICE_API_URL = "";</script>
 </head>
 <body>
 <header class="card app-head">
@@ -176,6 +223,15 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
   <div id="menuList" class="menu-list" role="menu" aria-label="Menu chính" aria-hidden="true"></div>
 </header>
 <main>
+  <section class="card" id="priceCard">
+    <div class="card-head">
+      <span class="icon-tile" aria-hidden="true">🏷️</span>
+      <div><h2>Giá mới nhất</h2><p>Đồng bộ một lần từ quản trị · dùng được khi không có mạng · không cần file Excel</p></div>
+    </div>
+    <button id="syncPrices" class="green" type="button">🔄 Cập nhật giá mới nhất</button>
+    <div id="priceStatus" class="status" aria-live="polite"></div>
+  </section>
+
   <section class="card" id="dataCard">
     <div class="card-head">
       <span class="icon-tile" aria-hidden="true">📁</span>
@@ -201,7 +257,7 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
       <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 9v6M12 9v6M16 9v6"/></svg></span>
       <div><h2>Tra cứu mã vạch</h2><p>Nhập mã hoặc quét bằng camera</p></div>
     </div>
-    <div id="scanStatus" class="status" aria-live="polite">Hãy tải file dữ liệu hợp lệ trước khi tra cứu.</div>
+    <div id="scanStatus" class="status" aria-live="polite">Hãy cập nhật giá mới nhất hoặc tải file Excel hợp lệ trước khi tra cứu.</div>
     <input id="barcodeInput" type="text" inputmode="text" autocomplete="off" placeholder="Nhập hoặc dán mã vạch" aria-label="Mã vạch cần tìm" style="margin-top:12px">
     <div class="row">
       <button id="searchButton" class="primary" disabled>🔎 Tìm kiếm</button>
@@ -231,7 +287,7 @@ footer{text-align:center;color:#94a3b8;font-size:12px;padding:4px 12px 24px}
     <div id="resultFields" class="results"></div>
   </section>
 </main>
-<footer>Barcode Scanner · Contacts: khoi87261@gmail.com<div id="storageNote" style="margin-top:6px"></div><div id="perfNote" style="margin-top:6px"></div></footer>
+<footer><a href="#" id="adminLink" style="color:inherit">Quản trị</a> · Barcode Scanner · Contacts: khoi87261@gmail.com<div id="storageNote" style="margin-top:6px"></div><div id="perfNote" style="margin-top:6px"></div></footer>
 
 <div id="panelRoot" class="panel-root" aria-hidden="true">
   <div class="panel-backdrop" data-close="1"></div>
@@ -253,7 +309,10 @@ let dataSources = [], pendingColumnSourceId = null, reader = null, controls = nu
 let flashOn = false, flashBusy = false, torchSupported = false;
 let camState = "idle";      // idle | starting | live | frozen
 let sessionId = 0;          // tăng mỗi khi mở/dừng/khóa: vô hiệu hóa tác vụ cũ
-let pendingStart = null;    // lời hứa của lần mở camera đang chạy
+let pendingStart = null;
+// Google Sheets nhiều sheet (kho IndexedDB "gsheets" riêng, tách hẳn khỏi file Excel cá nhân). Khai báo sớm vì các hàm phía trên đọc biến này.
+let gsData = null, gsSyncing = false, gsLoadRun = Promise.resolve();
+const PRICE_API = String(window.PRICE_API_URL || "").trim();    // lời hứa của lần mở camera đang chạy
 // ===================== HẠ TẦNG HIỆU NĂNG =====================
 // Nhường luồng chính (ưu tiên scheduler.yield, dự phòng setTimeout) để giao diện luôn phản hồi.
 const yieldToMain = () => (globalThis.scheduler && typeof scheduler.yield === "function") ? scheduler.yield() : new Promise(r => setTimeout(r, 0));
@@ -333,8 +392,8 @@ const GTIN_LOOSE_MATCH = true;     // so khớp EAN/UPC dạng 8-14 số theo ch
 // ===================== LƯU TRỮ BỀN VỮNG (IndexedDB) =====================
 // Hai kho: "files" (nội dung file gốc, ArrayBuffer) và "sources" (cấu hình nhẹ: nhãn, thứ tự, sheet, cột...).
 // Tách đôi để đổi cấu hình không phải ghi lại cả file. Mọi thao tác DB chạy lần lượt qua dbEnqueue().
-const DB_NAME = "barcode-lookup-db", DB_VERSION = 1, SCHEMA_VERSION = 1;
-const STORE_FILES = "files", STORE_SOURCES = "sources";
+const DB_NAME = "barcode-lookup-db", DB_VERSION = 3, SCHEMA_VERSION = 1;
+const STORE_FILES = "files", STORE_SOURCES = "sources", STORE_PRICES = "prices", STORE_GS = "gsheets";
 let dbPromise = null, dbQueue = Promise.resolve(), restoring = false, restoreBlocked = false, restoreRun = null, persistState = "unknown";
 
 // Safari cũ (iOS < 14) chưa có Blob.arrayBuffer(): dùng FileReader thay thế.
@@ -375,7 +434,10 @@ function openDatabase() {
         db.createObjectStore(STORE_FILES, { keyPath: "id" });
         db.createObjectStore(STORE_SOURCES, { keyPath: "id" }).createIndex("order", "order");
       }
-      // Phiên bản sau: thêm khối "if (e.oldVersion < 2) { ... }" tại đây, KHÔNG xóa kho cũ.
+      // v2 (bản trước): kho "prices" cho một bảng giá. v3: kho "gsheets" cho nhiều sheet. Hai kho gốc (files, sources) và "prices" giữ nguyên, không xóa, không sửa bản ghi.
+      if (!db.objectStoreNames.contains(STORE_PRICES)) db.createObjectStore(STORE_PRICES, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(STORE_GS)) db.createObjectStore(STORE_GS, { keyPath: "id" });
+      // Phiên bản sau: thêm khối "if (e.oldVersion < 4) { ... }" tại đây, KHÔNG xóa kho cũ.
     };
     req.onsuccess = () => {
       clearTimeout(timer);
@@ -676,8 +738,11 @@ async function validateRows(columns, rows, index, meta=[], isStale=()=>false) {
   if (errors.length) return {errors,products:[]};
   return {errors,products};
 }
+// Có dữ liệu để tra cứu: ít nhất một file Excel hợp lệ HOẶC dữ liệu Google Sheets đã đồng bộ hợp lệ (không bắt buộc phải có Excel).
+function gsReady() { return !!(gsData && Array.isArray(gsData.sheets) && gsData.sheets.some(s => s.rows && s.rows.length)); }
+function hasAnyData() { return dataSources.some(s=>s.status==="ready" && s.products.length) || gsReady(); }
 function updateSearchAvailability() {
-  const ready = !restoring && dataSources.some(s=>s.status==="ready" && s.products.length);   // chưa quét khi đang khôi phục
+  const ready = !restoring && hasAnyData();   // chưa quét khi đang khôi phục
   $("searchButton").disabled = !ready;
   updateUiState(ready);
   syncCameraUI();
@@ -1133,8 +1198,8 @@ function searchBarcode(value) {
     source.status === "ready" && Array.isArray(source.products)
   );
 
-  if (!readySources.length) {
-    setStatus(scanStatus, "Hãy tải ít nhất một file Excel hợp lệ trước.", "error");
+  if (!readySources.length && !gsReady()) {
+    setStatus(scanStatus, "Hãy cập nhật giá mới nhất hoặc tải ít nhất một file Excel hợp lệ trước.", "error");
     return;
   }
   if (!query) {
@@ -1147,6 +1212,8 @@ function searchBarcode(value) {
 
   // Duyệt mọi dòng của mọi file; không dừng khi tìm thấy kết quả đầu tiên.
   const qkey = matchKey(query);
+  // Google Sheets: mỗi sheet một nhóm kết quả (thẻ chính + các dòng trùng mã trong cùng sheet); hiển thị trước Excel.
+  const gsHits = gsReady() ? gsData.sheets.map(sheet => { const a = sheet.index.get(qkey); return a && a.length ? { sheet, product: a[0], others: a.slice(1) } : null; }).filter(Boolean) : [];
   const missing = [];                               // sheet đã chọn nhưng không có mã này
   readySources.forEach(source => {
     const bySheet = new Map();
@@ -1161,10 +1228,10 @@ function searchBarcode(value) {
     });
   });
 
-  if (!matches.length) {
+  if (!matches.length && !gsHits.length) {
     result.hidden = true;
     const notReady = dataSources.filter(source => source.status !== "ready");
-    let message = `Không tìm thấy mã vạch "${query}" trong ${readySources.length} file hợp lệ.`;
+    let message = `Không tìm thấy mã vạch "${query}" trong ${[readySources.length ? readySources.length + " file Excel" : "", gsReady() ? gsData.sheets.length + " sheet Google Sheets" : ""].filter(Boolean).join(" và ")}.`;
     if (notReady.length) {
       message += "\nChưa tìm trong: " + notReady.map(source =>
         `${source.file.name} (${source.status})`
@@ -1175,6 +1242,7 @@ function searchBarcode(value) {
   }
 
   const frag = document.createDocumentFragment();
+  gsHits.forEach(h => frag.append(buildGsGroupCard(h, query)));
   matches.forEach(({ source, product, others }) => frag.append(renderProductCard(source, product, query, others)));
   resultFields.append(frag);
   if (missing.length) {
@@ -1184,12 +1252,13 @@ function searchBarcode(value) {
   }
 
   const foundIds = new Set(matches.map(match => match.source.id));
-  const sourceCount = foundIds.size;
-  const dupRows = matches.reduce((n, m) => n + m.others.length, 0);
-  resultSummary.textContent = `Mã vạch ${query} · ${matches.length} kết quả · có trong ${sourceCount}/${readySources.length} file` + (dupRows ? ` · có thêm ${dupRows} bản ghi trùng trong cùng sheet (bấm “Xem thêm bản ghi”)` : "") + ".";
+  const sourceCount = foundIds.size + (gsHits.length ? 1 : 0);
+  const gsTotal = gsHits.length, total = matches.length + gsTotal;
+  const dupRows = matches.reduce((n, m) => n + m.others.length, 0) + gsHits.reduce((n, h) => n + h.others.length, 0);
+  resultSummary.textContent = `Mã vạch ${query} · ${total} kết quả` + (gsTotal ? ` (${gsTotal} từ Google Sheets)` : "") + (readySources.length ? ` · có trong ${foundIds.size}/${readySources.length} file Excel` : "") + (dupRows ? ` · có thêm ${dupRows} bản ghi trùng trong cùng sheet (bấm “Xem thêm bản ghi”)` : "") + ".";
   result.hidden = false;
   setStatus(scanStatus,
-    `Đã tìm thấy ${matches.length} kết quả từ ${sourceCount} nguồn. Mỗi thẻ là một sheet của một file.`,
+    `Đã tìm thấy ${total} kết quả từ ${sourceCount} nguồn. Mỗi thẻ là một sheet.`,
     "success"
   );
   result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1198,7 +1267,7 @@ $("searchButton").addEventListener("click",()=>searchBarcode(barcodeInput.value)
 barcodeInput.addEventListener("keydown",event=>{if(event.key==="Enter")searchBarcode(barcodeInput.value);});
 $("clearButton").addEventListener("click",()=>{
   barcodeInput.value="";result.hidden=true;resultFields.replaceChildren();
-  setStatus(scanStatus,dataSources.some(s=>s.status==="ready")?"Đã xóa kết quả. Bạn có thể tra cứu mã khác.":"Hãy tải file Excel hợp lệ trước.");
+  setStatus(scanStatus,hasAnyData()?"Đã xóa kết quả. Bạn có thể tra cứu mã khác.":"Hãy cập nhật giá mới nhất hoặc tải file Excel hợp lệ trước.");
   barcodeInput.focus();
 });
 
@@ -1280,7 +1349,7 @@ function activeVideoTrack(){
 
 // Đồng bộ toàn bộ giao diện camera theo đúng một trạng thái duy nhất (camState).
 function syncCameraUI(){
-  const hasData = dataSources.some(s=>s.status==="ready" && s.products.length);
+  const hasData = hasAnyData();
   const st = camState;
   $("startCamera").disabled = !hasData || st==="starting" || st==="live";
   $("stopCamera").disabled = st==="idle";
@@ -1398,7 +1467,7 @@ async function tuneTrack(track){
 
 async function startCameraScan(){
   if (camState==="starting" || camState==="live") return;
-  if (!dataSources.some(s=>s.status==="ready")) { setStatus(scanStatus,"Hãy tải file Excel hợp lệ trước khi quét.","error"); return; }
+  if (!hasAnyData()) { setStatus(scanStatus,"Hãy cập nhật giá mới nhất hoặc tải file Excel hợp lệ trước khi quét.","error"); return; }
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     setStatus(scanStatus, CAM_ENV.inApp ? "Trình duyệt trong ứng dụng (Zalo, Facebook…) không cho dùng camera. Hãy mở trang bằng Safari hoặc Chrome."
       : "Camera cần HTTPS và trình duyệt hỗ trợ. Hãy mở trang qua HTTPS; bạn vẫn có thể nhập mã thủ công.", "error"); return;
@@ -1597,11 +1666,503 @@ $("clearAllButton").addEventListener("click", async () => {
   updateStorageNote();
 });
 window.addEventListener("pageshow", e => { if (e.persisted && !restoring && !dataSources.length) restoreSavedFiles().catch(() => {}); });   // quay lại từ bộ nhớ đệm trang (Safari)
+// ===================== GIÁ MỚI NHẤT: GOOGLE SHEETS NHIỀU SHEET =====================
+// Contract lấy từ Code.gs: GET ?action=manifest (danh sách sheet đã phát hành + cấu hình), GET ?action=chunk&v&key&from&n (dữ liệu từng lô),
+// GET ?action=prices (chế độ cũ một bảng). Quản trị: POST gsDiscover / gsSave / gsPublish / gsUnlink / auto / status / login / logout.
+// Mỗi sheet là một nguồn độc lập (tiêu đề, cột mã vạch, cột hiển thị riêng), KHÔNG gộp thành một bảng chung.
+// Mô hình: gsData = { mode, version, updatedAt, origin, syncedAt, spreadsheetId, spreadsheetName, sheets: [sheet] }
+//          sheet  = { key, spreadsheetId, sheetId, sheetName, order, hidden, headerRow, headers, barcodeColumn, displayColumns, rows, index }
+// rows[i] có thêm 1 phần tử cuối = số dòng thật trong Google Sheet (chỉ số headers.length).
+const fmtTime = t => { try { return t ? new Date(t).toLocaleString("vi-VN") : ""; } catch (e) { return ""; } };
+const GS_CHUNK_ROWS = 2000;      // Code.gs cho phép tối đa 3000 dòng mỗi lô
+const GS_NETWORK_ERR = /failed to fetch|load failed|networkerror|network request failed/i;
+// Dựng chỉ mục barcode cho MỘT sheet theo cấu hình quản trị. Mã luôn là chuỗi; giữ MỌI bản ghi trùng mã.
+async function buildGsSheet(rec) {
+  const name = rec.sheetName || "Sheet", headers = rec.headers, rows = rec.rows;
+  if (!Array.isArray(headers) || !headers.length) throw new Error(`Sheet “${name}”: thiếu tiêu đề cột.`);
+  if (!Array.isArray(rows) || !rows.length) throw new Error(`Sheet “${name}”: không có dòng dữ liệu.`);
+  const w = headers.length, bc = rec.barcodeColumn;
+  if (!Number.isInteger(bc) || bc < 0 || bc >= w) throw new Error(`Sheet “${name}”: chưa có cột mã vạch hợp lệ.`);
+  let disp = rec.displayColumns;
+  if (!Array.isArray(disp)) disp = headers.map((_, i) => i);
+  if (disp.some(i => !Number.isInteger(i) || i < 0 || i >= w)) throw new Error(`Sheet “${name}”: cột hiển thị không hợp lệ.`);
+  const index = new Map(), slice = makeSlicer(); let noBarcode = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!Array.isArray(row) || row.length < w) throw new Error(`Sheet “${name}”: dòng dữ liệu thứ ${i + 1} sai cấu trúc.`);
+    const code = barcodeString(row[bc]);
+    if (!code) noBarcode++;
+    else {
+      const key = keyOfCode(code), line = rec.lineFromData ? (Number(row[w]) || i + 1) : i + 2;
+      const p = { barcode: code, key, values: row, line, sheet: name }, a = index.get(key);
+      if (a) a.push(p); else index.set(key, [p]);
+    }
+    await slice();
+  }
+  return { ...rec, displayColumns: disp, barcodeColumn: bc, rowCount: rows.length, index, noBarcode };
+}
+const gsSheetRecord = s => ({ id: "sheet:" + s.key, key: s.key, spreadsheetId: s.spreadsheetId || "", sheetId: s.sheetId == null ? null : s.sheetId, sheetName: s.sheetName, order: s.order || 0, hidden: !!s.hidden,
+  rowCount: s.rows.length, headerRow: s.headerRow || 0, headers: s.headers, barcodeColumn: s.barcodeColumn, displayColumns: s.displayColumns, lineFromData: !!s.lineFromData, rows: s.rows });
+const gsManifestRecord = d => ({ id: "manifest", mode: d.mode, version: d.version, updatedAt: d.updatedAt || "", origin: d.origin || "", syncedAt: d.syncedAt,
+  spreadsheetId: d.spreadsheetId || "", spreadsheetName: d.spreadsheetName || "", schemaVersion: 1, keys: d.sheets.map(s => s.key) });
+async function gsFromLegacy(rec) {     // bảng giá một sheet của bản trước (kho "prices")
+  const bi = barcodeIndexOf(rec.headers);
+  if (bi < 0) throw new Error("Dữ liệu giá chưa có cột mã vạch (tên cột nên chứa “Barcode” hoặc “Mã vạch”).");
+  const sheet = await buildGsSheet({ key: "legacy", sheetName: "Giá mới nhất", order: 0, hidden: false, headerRow: 1, headers: rec.headers, rows: rec.rows, barcodeColumn: bi, displayColumns: null, lineFromData: false });
+  return { mode: "legacy", version: rec.version, updatedAt: rec.updatedAt || "", origin: rec.origin || "", syncedAt: rec.syncedAt || Date.now(), spreadsheetId: "", spreadsheetName: "Bảng giá quản trị", sheets: [sheet] };
+}
+function showPriceStatus() {
+  const el = $("priceStatus");
+  if (!PRICE_API) { setStatus(el, "Chưa cấu hình nguồn giá (thiếu URL Apps Script ở biến PRICE_API_URL đầu file).", "warn"); return; }
+  if (!gsData) { setStatus(el, "Chưa có giá mới nhất. Bấm nút phía trên để lấy từ quản trị (chỉ cần làm khi có cập nhật)."); return; }
+  const lines = [`Đồng bộ lần cuối: ${fmtTime(gsData.syncedAt)} · phiên bản ${gsData.version}`];
+  if (gsData.sheets.length > 1 || gsData.mode === "multi") gsData.sheets.forEach(s => lines.push(`• ${s.sheetName}: ${s.rows.length} dòng`));
+  else lines.push(`${gsData.sheets[0].rows.length} dòng giá`);
+  if (gsData.updatedAt) lines.push(`Quản trị đăng dữ liệu lúc ${fmtTime(gsData.updatedAt)}`);
+  setStatus(el, lines.join("\n"), "success");
+}
+function announceGsReady() {
+  if (gsReady() && !dataSources.some(s => s.status === "ready")) setStatus(scanStatus, "Giá mới nhất đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.", "success");
+}
+// Khôi phục bản đã đồng bộ gần nhất (dùng được khi mất mạng). Chỉ nhận bản đủ và nhất quán; bản dở dang bị bỏ qua.
+async function loadGs() {
+  if (!ENV.features.indexedDB) { showPriceStatus(); return; }
+  try {
+    let all = [], legacy = null;
+    await dbEnqueue(() => idbTx([STORE_GS, STORE_PRICES], "readonly", tx => {
+      tx.objectStore(STORE_GS).getAll().onsuccess = e => { all = e.target.result || []; };
+      tx.objectStore(STORE_PRICES).get("current").onsuccess = e => { legacy = e.target.result || null; };
+    }));
+    const man = all.find(r => r.id === "manifest");
+    let next = null;
+    if (man && Array.isArray(man.keys) && man.keys.length) {
+      const recs = man.keys.map(k => all.find(r => r.id === "sheet:" + k));
+      if (recs.every(r => r && Array.isArray(r.rows) && r.rows.length === r.rowCount)) {
+        const sheets = []; for (const r of recs) sheets.push(await buildGsSheet(r));
+        next = { ...man, sheets };
+      } else console.warn("Dữ liệu Google Sheets đã lưu không đầy đủ, bỏ qua.");
+    } else if (legacy && Array.isArray(legacy.headers) && Array.isArray(legacy.rows) && legacy.rows.length) next = await gsFromLegacy(legacy);
+    if (next && !gsData) gsData = next;
+  } catch (error) { console.warn("Không khôi phục được dữ liệu Google Sheets đã lưu:", error); }
+  showPriceStatus(); updateSearchAvailability(); announceGsReady();
+}
+async function gsApi(params, ms = 45000) {
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
+  try {
+    const url = PRICE_API + (PRICE_API.includes("?") ? "&" : "?") + new URLSearchParams({ ...params, t: Date.now() });
+    const res = await fetch(url, { cache: "no-store", signal: ctl.signal });
+    return await res.json().catch(() => { throw new Error("Phản hồi không hợp lệ từ máy chủ giá (kiểm tra URL và quyền truy cập “Bất kỳ ai”)."); });
+  } finally { clearTimeout(timer); }
+}
+async function gsApiRetry(params) {      // lỗi mạng tạm thời: thử lại tối đa 3 lần
+  let last;
+  for (let t = 0; t < 3; t++) {
+    try { return await gsApi(params); } catch (e) { last = e; await new Promise(r => setTimeout(r, 700 * (t + 1))); }
+  }
+  throw last;
+}
+function gsCheckManifest(man) {
+  const bad = m => { throw new Error("Danh sách sheet từ máy chủ không hợp lệ" + (m ? ` (${m})` : "") + ". Hãy báo quản trị phát hành lại."); };
+  if (!Array.isArray(man.sheets) || !man.sheets.length) bad("không có sheet nào");
+  const keys = new Set();
+  man.sheets.forEach(m => {
+    if (!m || !/^s\d+$/.test(String(m.key)) || keys.has(m.key)) bad("khóa sheet");
+    keys.add(m.key);
+    if (!Array.isArray(m.headers) || !m.headers.length || m.keptColumns !== m.headers.length) bad(`tiêu đề sheet “${m.sheetName}”`);
+    if (!Number.isInteger(m.rowCount) || m.rowCount < 1) bad(`số dòng sheet “${m.sheetName}”`);
+    if (!Number.isInteger(m.barcodeColumn) || m.barcodeColumn < 0 || m.barcodeColumn >= m.headers.length) bad(`cột mã vạch sheet “${m.sheetName}”`);
+    if (!Array.isArray(m.displayColumns) || m.displayColumns.some(i => !Number.isInteger(i) || i < 0 || i >= m.headers.length)) bad(`cột hiển thị sheet “${m.sheetName}”`);
+  });
+}
+async function gsDownload(man, sheetsMeta, progress) {
+  const out = [];
+  for (let si = 0; si < sheetsMeta.length; si++) {
+    const m = sheetsMeta[si], rows = [], need = m.headers.length + 1;
+    while (rows.length < m.rowCount) {
+      progress(`Đang tải sheet “${m.sheetName}” (${si + 1}/${sheetsMeta.length}): ${rows.length}/${m.rowCount} dòng…`);
+      const j = await gsApiRetry({ action: "chunk", v: man.version, key: m.key, from: rows.length, n: GS_CHUNK_ROWS });
+      if (!j.ok) { const e = new Error(j.error || "Máy chủ báo lỗi."); e.stale = !!j.stale; throw e; }
+      if (String(j.version) !== String(man.version) || j.key !== m.key || j.from !== rows.length || j.total !== m.rowCount || !Array.isArray(j.rows)) throw new Error(`Dữ liệu sheet “${m.sheetName}” không khớp phiên bản hoặc vị trí lô.`);
+      if (!j.rows.length) throw new Error(`Máy chủ trả lô trống cho sheet “${m.sheetName}”.`);
+      for (const r of j.rows) { if (!Array.isArray(r) || r.length !== need) throw new Error(`Sheet “${m.sheetName}”: dòng dữ liệu sai số cột.`); rows.push(r); }
+      await yieldToMain();
+    }
+    out.push({ ...m, spreadsheetId: m.spreadsheetId || man.spreadsheetId, rows, lineFromData: true });
+  }
+  return out;
+}
+// Một lượt đồng bộ: tải đủ -> kiểm tra -> dựng chỉ mục -> LƯU (một giao dịch) -> mới công nhận phiên bản. Lỗi ở bước nào thì bản cũ giữ nguyên.
+async function gsSyncOnce() {
+  const st = $("priceStatus");
+  setStatus(st, "Đang kiểm tra phiên bản mới nhất…");
+  const man = await gsApiRetry({ action: "manifest" });
+  if (!man.ok) throw new Error(man.error || "Máy chủ báo lỗi.");
+  let next;
+  if (man.mode === "multi") {
+    gsCheckManifest(man);
+    if (gsData && gsData.mode === "multi" && String(gsData.version) === String(man.version)) {
+      showPriceStatus(); setStatus(st, `Bạn đang dùng bản mới nhất (phiên bản ${man.version}).\n` + st.textContent, "success"); return;
+    }
+    const metas = [...man.sheets].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const raw = await gsDownload(man, metas, msg => setStatus(st, msg));
+    setStatus(st, "Đang kiểm tra dữ liệu và dựng chỉ mục tra cứu…");
+    const sheets = []; for (const r of raw) sheets.push(await buildGsSheet(r));
+    next = { mode: "multi", version: man.version, updatedAt: man.updatedAt || "", origin: man.origin || "", syncedAt: Date.now(), spreadsheetId: man.spreadsheetId || "", spreadsheetName: man.spreadsheetName || "", sheets };
+  } else {                         // chế độ cũ: một bảng headers + rows
+    const j = await gsApi({ action: "prices" }, 60000);
+    if (!j.ok) throw new Error(j.error || "Máy chủ báo lỗi.");
+    if (!Array.isArray(j.headers) || !j.headers.length || !Array.isArray(j.rows) || !j.rows.length) throw new Error("Nguồn giá của quản trị đang trống, giữ nguyên giá cũ.");
+    setStatus(st, "Đang kiểm tra dữ liệu và dựng chỉ mục tra cứu…");
+    next = await gsFromLegacy({ version: j.version, updatedAt: j.updatedAt, origin: j.origin, syncedAt: Date.now(), headers: j.headers, rows: j.rows });
+  }
+  let note = "";
+  if (ENV.features.indexedDB) {
+    try {
+      await dbEnqueue(() => idbTx([STORE_GS], "readwrite", tx => {
+        const os = tx.objectStore(STORE_GS); os.clear();
+        next.sheets.forEach(s => os.put(gsSheetRecord(s))); os.put(gsManifestRecord(next));
+      }));
+    } catch (error) { throw new Error(`Đã tải đủ dữ liệu nhưng chưa lưu được vào thiết bị (${describeDbError(error)}). Giữ nguyên bản cũ.`); }
+  } else note = "\nTrình duyệt này không lưu được dữ liệu: giá chỉ dùng trong phiên hiện tại.";
+  gsData = next; showPriceStatus(); updateSearchAvailability(); announceGsReady();
+  if (note) setStatus(st, st.textContent + note, "success");
+}
+async function syncPrices() {
+  if (gsSyncing) return;
+  if (!PRICE_API) { showPriceStatus(); return; }
+  gsSyncing = true; const btn = $("syncPrices"); btn.disabled = true;
+  try {
+    await gsLoadRun;
+    for (let attempt = 0; ; attempt++) {
+      try { await gsSyncOnce(); break; }
+      catch (e) { if (e.stale && attempt === 0) { setStatus($("priceStatus"), "Quản trị vừa đăng dữ liệu mới, đang lấy lại từ đầu…"); continue; } throw e; }
+    }
+  } catch (error) {
+    const msg = error.name === "AbortError" ? "Hết thời gian chờ máy chủ." : (GS_NETWORK_ERR.test(error.message || "") ? "Không kết nối được máy chủ giá (kiểm tra mạng)." : error.message);
+    setStatus($("priceStatus"), `Không cập nhật được: ${msg}` + (gsReady() ? `\nVẫn tra cứu bằng bản đã lưu lúc ${fmtTime(gsData.syncedAt)} (phiên bản ${gsData.version}).` : ""), "error");
+  } finally { gsSyncing = false; btn.disabled = false; }
+}
+// Thẻ kết quả Google Sheets: tái dùng buildRecordCard, đổi nhãn để không nhầm với "File tổng/File kèm theo".
+function buildGsCard(sheet, p, query, opts = {}) {
+  const pseudo = sheet._src || (sheet._src = { id: "gs:" + sheet.key, label: sheet.sheetName, file: { name: (gsData && gsData.spreadsheetName) || "Google Sheets" }, headers: sheet.headers, displayColumns: sheet.displayColumns, selectedSheets: [], sheetCount: 1 });
+  const card = buildRecordCard(pseudo, p, query, opts);
+  card.classList.remove("is-main", "is-extra"); card.classList.add("is-price");
+  const role = card.querySelector(".role"); if (role) { role.className = "role role-price"; role.textContent = "Google Sheets"; }
+  const src = card.querySelector(".pc-source"); if (src) src.textContent = sheet.sheetName + (pseudo.file.name && gsData && gsData.mode === "multi" ? " · " + pseudo.file.name : "");
+  const meta = card.querySelector(".pc-meta");
+  if (meta) {
+    meta.replaceChildren();
+    const chips = [`Sheet: ${sheet.sheetName}`, `Dòng: ${p.line}`];
+    if (p.barcode && p.barcode !== query) chips.push(`Mã trong file: ${p.barcode}`);
+    chips.push("Quản trị cập nhật: " + (fmtTime(gsData.updatedAt || gsData.syncedAt) || "—"));
+    chips.forEach(t => { const c = document.createElement("span"); c.className = "chip"; c.textContent = t; meta.append(c); });
+  }
+  return card;
+}
+// 1 thẻ cho mỗi sheet; mã còn ở dòng khác trong CÙNG sheet có mục "Xem thêm bản ghi" (dựng khi người dùng mở).
+function buildGsGroupCard(h, query) {
+  const card = buildGsCard(h.sheet, h.product, query);
+  if (h.others.length) {
+    const dup = document.createElement("details"); dup.className = "dup-rows";
+    const sm = document.createElement("summary"); sm.textContent = `Xem thêm bản ghi (${h.others.length})`; dup.append(sm);
+    const help = document.createElement("p"); help.className = "opt-help"; help.textContent = `Mã này còn ${h.others.length} dòng khác trong sheet “${h.sheet.sheetName}”. Bản ghi chính đang hiển thị là dòng ${h.product.line}.`; dup.append(help);
+    dup.addEventListener("toggle", () => {
+      if (!dup.open || dup.dataset.built) return; dup.dataset.built = "1";
+      const frag = document.createDocumentFragment();
+      h.others.forEach(o => frag.append(buildGsCard(h.sheet, o, query, { extra: true, base: h.product })));
+      dup.append(frag);
+    });
+    card.append(dup);
+  }
+  return card;
+}
+$("syncPrices").addEventListener("click", syncPrices);
+
+// ===================== KHU VỰC QUẢN TRỊ GIÁ (NHIỀU SHEET) =====================
+// Mật khẩu chỉ được kiểm tra trên Google Apps Script (Script Properties). Trang này chỉ giữ token phiên (sessionStorage), hết hạn sau 6 giờ.
+const ADMIN_HTML = `
+<div class="adm-grid">
+  <section class="adm-sec" id="admLoginCard">
+    <h3>Đăng nhập quản trị</h3>
+    <p>Mật khẩu được kiểm tra trên máy chủ Google Apps Script, không nằm trong mã của trang này.</p>
+    <input id="admPw" type="password" autocomplete="current-password" placeholder="Mật khẩu quản trị" aria-label="Mật khẩu quản trị">
+    <button id="admLoginBtn" class="primary" type="button">Đăng nhập</button>
+    <div id="admLoginSt" class="status" aria-live="polite"></div>
+  </section>
+  <div id="admPanel" class="adm-grid" hidden>
+    <section class="adm-sec">
+      <h3>Dữ liệu đang phát hành</h3>
+      <div id="admInfo" class="status" aria-live="polite"></div>
+      <p>Mở <a id="admSheetLink" target="_blank" rel="noopener">Google Sheet của máy chủ giá</a> (chứa các tab dữ liệu ẩn đã phát hành).</p>
+      <button id="admLogout" class="light" type="button">Đăng xuất</button>
+    </section>
+    <section class="adm-sec">
+      <h3>Google Spreadsheet nhiều sheet</h3>
+      <p>Dán liên kết Google Spreadsheet nguồn. Phải chia sẻ quyền Xem cho tài khoản Google đã triển khai máy chủ giá. Mỗi sheet được cấu hình và phát hành độc lập.</p>
+      <label class="adm-field">Liên kết hoặc ID Spreadsheet<input id="admUrl" type="text" inputmode="url" autocomplete="off" placeholder="https://docs.google.com/spreadsheets/d/…"></label>
+      <button id="admDiscover" class="primary" type="button">Tải danh sách sheet</button>
+      <div id="admDiscSt" class="status" aria-live="polite"></div>
+      <div id="admSheets" hidden>
+        <div class="gs-bar"><button id="admAll" class="light btn-sm" type="button">Chọn tất cả</button><button id="admNone" class="light btn-sm" type="button">Bỏ chọn tất cả</button></div>
+        <div id="admList" class="gs-list"></div>
+        <button id="admSave" class="light" type="button" style="width:100%;margin-top:12px">Lưu cấu hình</button>
+        <button id="admPublish" class="green" type="button" style="width:100%;margin-top:10px">Lưu và phát hành cho người dùng</button>
+      </div>
+      <div id="admGsSt" class="status" aria-live="polite"></div>
+    </section>
+    <section class="adm-sec">
+      <h3>Đồng bộ và kết nối</h3>
+      <button id="admSyncNow" class="light" type="button" disabled>Phát hành lại từ cấu hình đã lưu</button>
+      <label class="adm-field">Tự động phát hành lại
+        <select id="admAuto"><option value="0">Tắt</option><option value="1">Mỗi 1 giờ</option><option value="6">Mỗi 6 giờ</option><option value="12">Mỗi 12 giờ</option><option value="24">Mỗi ngày</option></select>
+      </label>
+      <button id="admUnlink" class="light" type="button" disabled>Ngắt kết nối Spreadsheet</button>
+      <div id="admLkSt" class="status" aria-live="polite"></div>
+    </section>
+    <section class="adm-sec">
+      <details>
+        <summary>Chế độ cũ: tải file Excel (một bảng duy nhất)</summary>
+        <p>Thay TOÀN BỘ dữ liệu giá (kể cả dữ liệu nhiều sheet đang phát hành) bằng một bảng từ file Excel. Cần có cột “Barcode” hoặc “Mã vạch”. Giá cũ chỉ bị thay khi đăng thành công.</p>
+        <label class="file-label" for="admFile">📁 Chọn file Excel giá</label>
+        <input id="admFile" type="file" accept=".xlsx,.xls" aria-label="Chọn file Excel giá">
+        <select id="admSheetSel" hidden aria-label="Chọn sheet"></select>
+        <button id="admUpBtn" class="green" type="button" disabled style="width:100%;margin-top:10px">Đăng giá lên</button>
+        <div id="admUpSt" class="status" aria-live="polite"></div>
+      </details>
+    </section>
+  </div>
+</div>`;
+function initAdmin(root) {
+  const A = id => root.querySelector("#" + id);
+  const st = (id, m, t = "") => setStatus(A(id), m, t);
+  const fmt = t => fmtTime(t) || "—";
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const colName = i => { let s = ""; for (i += 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };   // giống colLetter của Code.gs
+  let token = ""; try { token = sessionStorage.getItem("adm") || ""; } catch (e) {}
+  const save = t => { token = t; try { t ? sessionStorage.setItem("adm", t) : sessionStorage.removeItem("adm"); } catch (e) {} };
+  function show(on) { A("admLoginCard").hidden = on; A("admPanel").hidden = !on; if (!on) save(""); }
+  async function call(body) {
+    if (!PRICE_API) throw new Error("Chưa dán URL Apps Script vào biến PRICE_API_URL ở đầu file.");
+    let j;
+    try {
+      const r = await fetch(PRICE_API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ ...body, token }) });
+      j = await r.json();
+    } catch (e) { throw new Error("Không kết nối được máy chủ quản trị. Kiểm tra URL, mạng và quyền truy cập “Bất kỳ ai” của bản triển khai."); }
+    if (!j.ok) {
+      if (j.auth) { show(false); st("admLoginSt", j.error || "Phiên đăng nhập hết hạn, hãy đăng nhập lại.", "error"); }
+      throw new Error(j.error || "Lỗi máy chủ.");
+    }
+    return j;
+  }
+  let lastStatus = null;
+  function render(s) {
+    lastStatus = s;
+    const lines = [`Chế độ: ${s.mode === "multi" ? "nhiều sheet" : "một bảng"} · phiên bản ${s.version} · ${s.rows} dòng`, `Cập nhật: ${fmt(s.updatedAt)}`, `Nguồn: ${s.origin || "—"}`];
+    const pub = s.gs && s.gs.published;
+    if (s.mode === "multi" && pub) { lines.push(`Đã phát hành ${pub.sheets.length} sheet:`); pub.sheets.forEach(x => lines.push(`  • ${x.sheetName}: ${x.rowCount} dòng · ${x.columnCount} cột hiển thị/mã vạch`)); }
+    if (s.gs && s.gs.src) lines.push(`Spreadsheet nguồn: ${s.gs.src.name} (đang chọn ${s.gs.selected} sheet)`); else lines.push("Chưa kết nối Spreadsheet nhiều sheet");
+    if (s.auto) lines.push(`Tự phát hành lại: ${s.auto >= 24 ? "mỗi ngày" : "mỗi " + s.auto + " giờ"}`);
+    if (s.autolog) lines.push(`Tự phát hành gần nhất: ${s.autolog}`);
+    A("admInfo").textContent = lines.join("\n"); A("admInfo").className = "status";
+    A("admSheetLink").href = s.sheetUrl || "#"; A("admAuto").value = String(s.auto || 0);
+    const linked = !!(s.gs && s.gs.src); A("admSyncNow").disabled = A("admUnlink").disabled = !linked;
+    if (linked && !A("admUrl").value) A("admUrl").value = "https://docs.google.com/spreadsheets/d/" + s.gs.src.id;
+  }
+  // ---- Đăng nhập / đăng xuất ----
+  A("admLoginBtn").onclick = async () => {
+    const b = A("admLoginBtn"); b.disabled = true; st("admLoginSt", "Đang đăng nhập…");
+    try {
+      const j = await call({ action: "login", password: A("admPw").value });
+      save(j.token); A("admPw").value = ""; st("admLoginSt", ""); show(true); render(await call({ action: "status" }));
+    } catch (e) { if (!A("admLoginCard").hidden) st("admLoginSt", e.message, "error"); else st("admInfo", e.message, "error"); }
+    finally { b.disabled = false; }
+  };
+  A("admPw").onkeydown = e => { if (e.key === "Enter") A("admLoginBtn").click(); };
+  A("admLogout").onclick = () => { call({ action: "logout" }).catch(() => {}); show(false); st("admLoginSt", "Đã đăng xuất."); };
+  if (token) { show(true); call({ action: "status" }).then(render).catch(() => show(false)); }
+  // ---- Cấu hình từng sheet ----
+  let disc = null, cfg = {};
+  const headersFor = (info, hr) => Array.from({ length: info.columnCount }, (_, i) => {
+    const v = hr > 0 ? String((info.sample[hr - 1] || [])[i] ?? "").trim() : "";
+    return v || "Cột " + colName(i);
+  });
+  function autoHeader(info) {     // dòng đầu tiên (trong 20 dòng xem trước) có đúng một tiêu đề giống mã vạch; không có thì xem như không có tiêu đề
+    for (let r = 0; r < info.sample.length; r++) if (detectBarcodeColumn(info.sample[r].map(x => String(x ?? ""))) >= 0) return r + 1;
+    return 0;
+  }
+  function initCfg(info) {
+    const w = info.columnCount, all = Array.from({ length: w }, (_, i) => i);
+    if (info.saved) {
+      const s = info.saved;
+      return { include: !!s.include, headerRow: s.headerRow | 0, barcodeColumn: Number.isInteger(s.barcodeColumn) ? s.barcodeColumn : -1, disp: new Set(Array.isArray(s.displayColumns) ? s.displayColumns.filter(i => i < w) : all), open: false };
+    }
+    const hr = autoHeader(info), bc = hr > 0 ? detectBarcodeColumn(headersFor(info, hr)) : -1;
+    return { include: w > 0 && bc >= 0 && !info.hidden, headerRow: hr, barcodeColumn: bc, disp: new Set(all), open: false };   // sheet ẩn: mặc định không chọn (quản trị tự bật nếu cần)
+  }
+  function sheetCard(info) {
+    const c = cfg[info.sheetId], w = info.columnCount, hdr = headersFor(info, c.headerRow), id = esc(info.sheetId);
+    const warn = (info.changes || []).map(x => "⚠ Nguồn đã thay đổi: " + x.text);
+    if (info.changes && info.changes.length) warn.push("Hãy kiểm tra cấu hình bên dưới rồi bấm “Lưu cấu hình” để xác nhận.");
+    if (info.isNew) warn.push("Sheet mới, chưa từng được cấu hình.");
+    if (!w) warn.push("Sheet đang trống, không thể phát hành.");
+    else if (c.barcodeColumn < 0) warn.push("Không tìm thấy cột mã vạch. Hãy chọn thủ công hoặc bỏ sheet này khỏi tra cứu.");
+    const hrOpts = [`<option value="0"${c.headerRow === 0 ? " selected" : ""}>Không có dòng tiêu đề</option>`].concat(info.sample.map((r, i) => {
+      const t = r.map(x => String(x ?? "").trim()).filter(Boolean).slice(0, 3).join(", ").slice(0, 44);
+      return `<option value="${i + 1}"${c.headerRow === i + 1 ? " selected" : ""}>Dòng ${i + 1}${t ? ": " + esc(t) : " (trống)"}</option>`;
+    })).join("");
+    const bcOpts = [`<option value="-1"${c.barcodeColumn < 0 ? " selected" : ""}>— Chưa chọn —</option>`].concat(hdr.map((h, i) => `<option value="${i}"${c.barcodeColumn === i ? " selected" : ""}>${colName(i)} · ${esc(h)}</option>`)).join("");
+    const cols = hdr.map((h, i) => `<label class="gs-col"><input type="checkbox" data-f="col" data-i="${i}"${c.disp.has(i) ? " checked" : ""}><span>${colName(i)} · ${esc(h)}</span></label>`).join("");
+    const rowsPrev = info.sample.slice(0, 8).map((r, ri) => `<tr${ri + 1 === c.headerRow ? ' class="hdr"' : ""}><td class="n">${ri + 1}</td>${Array.from({ length: w }, (_, i) => `<td${i === c.barcodeColumn ? ' class="bc"' : ""}>${esc(r[i] ?? "")}</td>`).join("")}</tr>`).join("");
+    return `<div class="gs-card${c.include ? "" : " off"}" data-card="${id}">
+      <div class="gs-top"><label><input type="checkbox" data-f="inc"${c.include ? " checked" : ""}${w ? "" : " disabled"}><span><span class="gs-name">${esc(info.name)}</span>
+        <span class="gs-badges"><span class="gs-badge">Thứ tự ${info.index + 1}</span><span class="gs-badge${info.hidden ? " hid" : ""}">${info.hidden ? "Đang ẩn" : "Đang hiện"}</span><span class="gs-badge">${info.lastRow} dòng · ${w} cột</span>${w && c.barcodeColumn < 0 ? '<span class="gs-badge bad">Chưa có cột mã vạch</span>' : ""}</span></span></label></div>
+      ${warn.length ? `<div class="gs-warn">${esc(warn.join("\n"))}</div>` : ""}
+      ${w ? `<details data-sid="${id}"${c.open ? " open" : ""}><summary>Cấu hình sheet này</summary>
+        <label class="gs-lab">Dòng tiêu đề<select data-f="hr">${hrOpts}</select></label>
+        <label class="gs-lab">Cột mã vạch<select data-f="bc">${bcOpts}</select></label>
+        <div class="gs-lab">Cột hiển thị cho người dùng (${c.disp.size}/${w})</div>
+        <div class="gs-bar"><button type="button" class="light btn-sm" data-f="colAll">Chọn tất cả cột</button><button type="button" class="light btn-sm" data-f="colNone">Bỏ chọn tất cả cột</button></div>
+        <div class="gs-cols">${cols}</div>
+        <div class="gs-lab">Xem trước ${Math.min(8, info.sample.length)} dòng đầu</div><div class="gs-prev"><table>${rowsPrev}</table></div>
+      </details>` : ""}</div>`;
+  }
+  const infoOf = sid => disc.sheets.find(s => String(s.sheetId) === String(sid));
+  function redraw(sid) { const n = A("admList").querySelector(`[data-card="${CSS.escape(String(sid))}"]`); if (n) n.outerHTML = sheetCard(infoOf(sid)); }
+  function drawAll() { A("admList").innerHTML = disc.sheets.map(sheetCard).join(""); A("admSheets").hidden = false; }
+  async function discover() {
+    const u = A("admUrl").value.trim(); if (!u) return st("admDiscSt", "Hãy dán liên kết Google Spreadsheet.", "error");
+    const b = A("admDiscover"); b.disabled = true; st("admDiscSt", "Đang đọc danh sách sheet…");
+    try {
+      disc = await call({ action: "gsDiscover", url: u }); cfg = {};
+      disc.sheets.forEach(s => { cfg[s.sheetId] = initCfg(s); });
+      drawAll(); b.textContent = "Tải lại danh sách sheet";
+      const miss = (disc.missing || []).map(m => m.sheetName || m.sheetId);
+      st("admDiscSt", `“${disc.name}”: ${disc.sheets.length} sheet (kể cả sheet ẩn).` + (miss.length ? `\n⚠ Đã cấu hình nhưng không còn trong nguồn: ${miss.join(", ")}.` : ""), miss.length ? "warn" : "success");
+    } catch (e) { st("admDiscSt", e.message, "error"); } finally { b.disabled = false; }
+  }
+  function validate() {
+    if (!disc) return "Hãy tải danh sách sheet trước.";
+    const on = disc.sheets.filter(s => cfg[s.sheetId].include);
+    if (!on.length) return "Hãy chọn ít nhất một sheet để phát hành.";
+    for (const s of on) {
+      const c = cfg[s.sheetId];
+      if (c.barcodeColumn < 0) return `Sheet “${s.name}”: chưa chọn cột mã vạch. Hãy chọn cột hoặc bỏ sheet khỏi tra cứu.`;
+      if (!c.disp.size) return `Sheet “${s.name}”: chưa chọn cột hiển thị nào.`;
+    }
+    return "";
+  }
+  const payload = () => disc.sheets.map(s => {
+    const c = cfg[s.sheetId], all = c.disp.size === s.columnCount;
+    return { sheetId: s.sheetId, include: !!(c.include && s.columnCount), headerRow: c.headerRow, barcodeColumn: c.barcodeColumn, displayColumns: all ? null : [...c.disp].sort((a, b) => a - b) };
+  });
+  async function saveCfg() {
+    const err = validate(); if (err) { st("admGsSt", err, "error"); return false; }
+    st("admGsSt", "Đang lưu cấu hình…");
+    render(await call({ action: "gsSave", url: disc.spreadsheetId, sheets: payload() }));
+    return true;
+  }
+  A("admDiscover").onclick = discover;
+  A("admAll").onclick = () => { if (!disc) return; disc.sheets.forEach(s => { if (s.columnCount) cfg[s.sheetId].include = true; }); drawAll(); };
+  A("admNone").onclick = () => { if (!disc) return; disc.sheets.forEach(s => { cfg[s.sheetId].include = false; }); drawAll(); };
+  const list = A("admList");
+  list.addEventListener("toggle", e => { const d = e.target; if (d.matches && d.matches("details[data-sid]") && cfg[d.dataset.sid]) cfg[d.dataset.sid].open = d.open; }, true);
+  list.addEventListener("change", e => {
+    const card = e.target.closest("[data-card]"); if (!card) return;
+    const sid = card.dataset.card, info = infoOf(sid), c = cfg[sid], f = e.target.dataset.f;
+    if (f === "inc") c.include = e.target.checked;
+    else if (f === "hr") { c.headerRow = Number(e.target.value) | 0; c.barcodeColumn = c.headerRow > 0 ? detectBarcodeColumn(headersFor(info, c.headerRow)) : -1; }   // đổi dòng tiêu đề: nhận diện lại cột mã vạch
+    else if (f === "bc") c.barcodeColumn = Number(e.target.value);
+    else if (f === "col") { const i = Number(e.target.dataset.i); e.target.checked ? c.disp.add(i) : c.disp.delete(i); }
+    else return;
+    redraw(sid);
+  });
+  list.addEventListener("click", e => {
+    const b = e.target.closest("button[data-f]"); if (!b) return;
+    const sid = b.closest("[data-card]").dataset.card, info = infoOf(sid), c = cfg[sid];
+    if (b.dataset.f === "colAll") c.disp = new Set(Array.from({ length: info.columnCount }, (_, i) => i));
+    else if (b.dataset.f === "colNone") c.disp = new Set();
+    else return;
+    redraw(sid);
+  });
+  A("admSave").onclick = async () => {
+    const b = A("admSave"); b.disabled = true;
+    try { if (await saveCfg()) { st("admGsSt", "Đã lưu cấu hình. Bấm “Lưu và phát hành” để người dùng nhận dữ liệu.", "success"); await discover(); } }
+    catch (e) { st("admGsSt", e.message, "error"); } finally { b.disabled = false; }
+  };
+  A("admPublish").onclick = async () => {
+    const err = validate(); if (err) return st("admGsSt", err, "error");
+    const n = disc.sheets.filter(s => cfg[s.sheetId].include).length;
+    if (!confirm(`Phát hành ${n} sheet cho người dùng? Bản đang phát hành chỉ bị thay khi TẤT CẢ sheet xử lý thành công.`)) return;
+    const b = A("admPublish"), b2 = A("admSave"); b.disabled = b2.disabled = true;
+    try {
+      if (!(await saveCfg())) return;
+      st("admGsSt", "Đang phát hành… có thể mất vài phút với dữ liệu lớn, vui lòng không đóng trang.");
+      const s = await call({ action: "gsPublish" }); render(s);
+      st("admGsSt", `Đã phát hành ${s.published.sheets} sheet · ${s.published.rows} dòng (phiên bản ${s.version}). Người dùng bấm “Cập nhật giá mới nhất” để nhận.`, "success");
+      await discover().catch(() => {});
+    } catch (e) { st("admGsSt", "Chưa phát hành được: " + e.message + "\nBản đang phát hành vẫn giữ nguyên.", "error"); }
+    finally { b.disabled = b2.disabled = false; }
+  };
+  // ---- Đồng bộ lại / tự động / ngắt kết nối ----
+  async function act(btn, body, ok) {
+    btn.disabled = true; st("admLkSt", "Đang xử lý…"); let s;
+    try { s = await call(body); st("admLkSt", typeof ok === "function" ? ok(s) : ok, "success"); } catch (e) { st("admLkSt", e.message, "error"); }
+    finally { btn.disabled = false; if (s) render(s); }
+  }
+  A("admSyncNow").onclick = () => act(A("admSyncNow"), { action: "gsPublish" }, s => `Đã phát hành lại ${s.published.sheets} sheet · ${s.published.rows} dòng.`);
+  A("admAuto").onchange = () => act(A("admAuto"), { action: "auto", hours: Number(A("admAuto").value) }, "Đã lưu chế độ tự phát hành.");
+  A("admUnlink").onclick = () => { if (confirm("Ngắt kết nối Spreadsheet? Dữ liệu đang phát hành vẫn được giữ cho tới khi bạn thay.")) { disc = null; A("admSheets").hidden = true; act(A("admUnlink"), { action: "gsUnlink" }, "Đã ngắt kết nối."); } };
+  // ---- Chế độ cũ: tải Excel thành một bảng (action "replace" của Code.gs) ----
+  let wb = null, fname = "", data = null;
+  const norm = x => String(x ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]/g, "");
+  function parse() {
+    data = null; A("admUpBtn").disabled = true;
+    const sh = wb.Sheets[A("admSheetSel").value], opt = { header: 1, defval: "", blankrows: false };
+    const t = XLSX.utils.sheet_to_json(sh, { ...opt, raw: false }); let raw = null, hi = 0, best = -1;
+    if (!t.length) return st("admUpSt", "Sheet này trống.", "error");
+    t.slice(0, 15).forEach((r, i) => { const c = r.map(v => String(v).trim()), sc = c.filter(Boolean).length + (c.some(v => /barcode|mã vạch|ma vach|ean|upc/i.test(v)) ? 1000 : 0); if (sc > best) { best = sc; hi = i; } });
+    const w = Math.max(...t.slice(hi).map(r => r.length), 1);
+    const headers = Array.from({ length: w }, (_, i) => String(t[hi][i] ?? "").trim() || `Cột ${i + 1}`);
+    const rows = [];
+    for (let r = hi + 1; r < t.length; r++) {
+      const row = Array.from({ length: w }, (_, i) => {
+        let v = String(t[r][i] ?? "");
+        if (/^-?\d(\.\d+)?E\+\d+$/i.test(v)) { raw = raw || XLSX.utils.sheet_to_json(sh, { ...opt, raw: true }); const n = raw[r]?.[i]; if (typeof n === "number" && Number.isInteger(n)) v = String(n); }
+        return v;
+      });
+      if (row.some(v => v.trim())) rows.push(row);
+    }
+    if (!headers.some(h => /barcode|mavach|ean|upc/.test(norm(h)))) return st("admUpSt", `Không thấy cột mã vạch. Tiêu đề đọc được: ${headers.join(", ")}. Đổi tên cột thành “Barcode” hoặc “Mã vạch” rồi chọn lại file.`, "error");
+    if (!rows.length) return st("admUpSt", "Sheet không có dòng dữ liệu.", "error");
+    data = { headers, rows }; A("admUpBtn").disabled = false; st("admUpSt", `Sẵn sàng đăng ${rows.length} dòng · ${w} cột.`, "success");
+  }
+  A("admFile").onchange = async e => {
+    const f = e.target.files[0]; if (!f) return; fname = f.name; data = null; A("admUpBtn").disabled = true;
+    try {
+      st("admUpSt", "Đang đọc file…"); await loadLib("xlsx"); wb = XLSX.read(await readBuffer(f), { type: "array" });
+      const sel = A("admSheetSel"); sel.replaceChildren(...wb.SheetNames.map(n => new Option(n, n))); sel.hidden = wb.SheetNames.length < 2; parse();
+    } catch (err) { st("admUpSt", err.message || "Không đọc được file.", "error"); }
+  };
+  A("admSheetSel").onchange = () => { try { parse(); } catch (err) { st("admUpSt", err.message || "Không đọc được sheet.", "error"); } };
+  A("admUpBtn").onclick = async () => {
+    if (!data || !confirm(`Thay TOÀN BỘ dữ liệu giá (kể cả nhiều sheet đang phát hành) bằng ${data.rows.length} dòng từ “${fname}”?`)) return;
+    const b = A("admUpBtn"), all = [data.headers, ...data.rows], N = 1500; b.disabled = true;
+    try {
+      for (let i = 0; i < all.length; i += N) {
+        st("admUpSt", `Đang đăng lên… ${Math.min(i + N, all.length) - 1}/${all.length - 1} dòng`);
+        render(await call({ action: "replace", first: i === 0, last: i + N >= all.length, origin: "Excel: " + fname, rows: all.slice(i, i + N) }));
+      }
+      st("admUpSt", `Đã đăng ${data.rows.length} dòng (chế độ một bảng). Người dùng bấm “Cập nhật giá mới nhất” để nhận.`, "success");
+    } catch (err) { st("admUpSt", "Đăng chưa hoàn tất: " + err.message + " Giá đang phát hành vẫn giữ nguyên, hãy đăng lại.", "error"); }
+    finally { b.disabled = !data; }
+  };
+}
 // ===================== MENU HAMBURGER + PANEL =====================
 // Mở rộng sau này: thêm một mục vào MENU_ITEMS và một mục tương ứng vào PANELS là đủ.
 const MENU_ITEMS = [
   { id: "guide",   label: "Hướng dẫn",                     panel: "guide" },
   { id: "ai",      label: "AI chuyển đổi file thông minh", panel: "ai" },
+  { id: "admin",   label: "Quản trị giá",                  panel: "admin" },
   { id: "contact", label: "Liên hệ",                       panel: "contact" },
   { id: "donate",  label: "Donate",                        panel: "donate" }
 ];
@@ -1718,6 +2279,7 @@ const PANELS = {
     const b = document.createElement("div"); b.className = "badge-dev"; b.textContent = "ĐANG PHÁT TRIỂN";
     body.append(b, placeholderBlock("Tính năng đang được xây dựng nhằm hỗ trợ chuyển đổi và xử lý file thông minh."));
   } },
+  admin: { title: "Quản trị giá", render(body) { body.innerHTML = ADMIN_HTML; initAdmin(body); } },
   contact: { title: "Liên hệ", render(body) {
     // TODO: Bổ sung thông tin Liên hệ chính thức.
     body.append(placeholderBlock("Nội dung đang được cập nhật"));
@@ -1796,7 +2358,8 @@ $("fileLabel").addEventListener("pointerdown", () => { loadLib("xlsx").catch(() 
 $("startCamera").addEventListener("pointerdown", () => { if (!$("startCamera").disabled) loadLib("zxing").catch(() => {}); }, { passive: true });   // sắp quét: nạp trước thư viện camera
 // Khóa việc thêm file NGAY (đồng bộ) để không file nào chen vào trước khi dữ liệu cũ được khôi phục; phần việc nặng chạy sau khi vẽ xong.
 if (ENV.features.indexedDB) { restoring = true; document.body.classList.add("restoring"); fileInput.disabled = true; }
-afterPaint(() => { restoreSavedFiles(); });                       // giao diện hiện trước, khôi phục dữ liệu chạy sau
+$("adminLink").addEventListener("click", e => { e.preventDefault(); openPanel("admin", $("adminLink")); });
+afterPaint(() => { restoreSavedFiles(); gsLoadRun = loadGs(); });                       // giao diện hiện trước, khôi phục dữ liệu chạy sau
 })();
 </script>
 </body>
