@@ -1718,7 +1718,7 @@ function showPriceStatus() {
   const lines = [`Đồng bộ lần cuối: ${fmtTime(gsData.syncedAt)} · phiên bản ${gsData.version}`];
   if (gsData.sheets.length > 1 || gsData.mode === "multi") gsData.sheets.forEach(s => lines.push(`• ${s.sheetName}: ${s.rows.length} dòng`));
   else lines.push(`${gsData.sheets[0].rows.length} dòng giá`);
-  if (gsData.updatedAt) lines.push(`Quản trị đăng dữ liệu lúc ${fmtTime(gsData.updatedAt)}`);
+  if (gsData.updatedAt) lines.push(`Dữ liệu cập nhật lúc ${fmtTime(gsData.updatedAt)}`);
   setStatus(el, lines.join("\n"), "success");
 }
 function announceGsReady() {
