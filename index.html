@@ -217,7 +217,7 @@ body .adm-sec .file-label{opacity:1;pointer-events:auto;min-height:50px;backgrou
 <header class="card app-head">
   <div class="card-head" style="margin:0">
     <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 9v6M12 9v6M16 9v6"/></svg></span>
-    <div class="head-text"><h1>Tra cứu sản phẩm</h1><p>Tải Excel · Quét mã vạch · Xem thông tin từng nguồn</p></div>
+    <div class="head-text"><h1>Tra cứu sản phẩm</h1><p></p></div>
     <button id="menuButton" class="menu-btn" type="button" aria-label="Mở menu" aria-haspopup="menu" aria-expanded="false" aria-controls="menuList"><span class="bars" aria-hidden="true"></span></button>
   </div>
   <div id="menuList" class="menu-list" role="menu" aria-label="Menu chính" aria-hidden="true"></div>
@@ -226,9 +226,9 @@ body .adm-sec .file-label{opacity:1;pointer-events:auto;min-height:50px;backgrou
   <section class="card" id="priceCard">
     <div class="card-head">
       <span class="icon-tile" aria-hidden="true">🏷️</span>
-      <div><h2>Giá mới nhất</h2><p>Đồng bộ một lần từ quản trị · dùng được khi không có mạng · không cần file Excel</p></div>
+      <div><h2>Dữ liệu mới nhất</h2><p></p></div>
     </div>
-    <button id="syncPrices" class="green" type="button">🔄 Cập nhật giá mới nhất</button>
+    <button id="syncPrices" class="green" type="button">🔄 Cập nhật dữ liệu mới nhất</button>
     <div id="priceStatus" class="status" aria-live="polite"></div>
   </section>
 
@@ -1884,7 +1884,6 @@ const ADMIN_HTML = `
 <div class="adm-grid">
   <section class="adm-sec" id="admLoginCard">
     <h3>Đăng nhập quản trị</h3>
-    <p>Mật khẩu được kiểm tra trên máy chủ Google Apps Script, không nằm trong mã của trang này.</p>
     <input id="admPw" type="password" autocomplete="current-password" placeholder="Mật khẩu quản trị" aria-label="Mật khẩu quản trị">
     <button id="admLoginBtn" class="primary" type="button">Đăng nhập</button>
     <div id="admLoginSt" class="status" aria-live="polite"></div>
