@@ -1722,7 +1722,7 @@ function showPriceStatus() {
   setStatus(el, lines.join("\n"), "success");
 }
 function announceGsReady() {
-  if (gsReady() && !dataSources.some(s => s.status === "ready")) setStatus(scanStatus, "Giá mới nhất đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.", "success");
+  if (gsReady() && !dataSources.some(s => s.status === "ready")) setStatus(scanStatus, "Dữ liệu mới nhất đã sẵn sàng. Bạn có thể nhập mã hoặc bật camera.", "success");
 }
 // Khôi phục bản đã đồng bộ gần nhất (dùng được khi mất mạng). Chỉ nhận bản đủ và nhất quán; bản dở dang bị bỏ qua.
 async function loadGs() {
